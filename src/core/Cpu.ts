@@ -197,6 +197,10 @@ export class Cpu {
 				jumped = this.jm();
 				break;
 
+			case 0xfe:
+				this.cpi();
+				break;
+
 			default:
 				throw new Cpu.UnimplementedInstructionError(opcode);
 		}
@@ -537,6 +541,7 @@ export class Cpu {
 		this.a = u8(answer);
 	}
 
+
 	/****************
 	 * BRANCH GROUP *
 	 ****************/
@@ -614,6 +619,7 @@ export class Cpu {
 	/*****************
 	 * LOGICAL GROUP *
 	 *****************/
+
 	protected ani() {
 		const answer = u16(this.a & this.getData8());
 
@@ -650,6 +656,17 @@ export class Cpu {
 
 		this.memory.write(address, this.l);
 		this.memory.write(u16(address + 1), this.h);
+	}
+
+	protected cpi() {
+		const data = this.getData8();
+		const answer = u16(this.a - data);
+
+		this.conditions.setZ(answer);
+		this.conditions.cy = this.a < data;
+		this.conditions.setP(answer);
+		this.conditions.setS(answer);
+		this.conditions.setAC(u8((this.a & 0xf) - (data & 0xf)));
 	}
 
 
