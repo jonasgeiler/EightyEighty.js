@@ -169,6 +169,10 @@ export class Cpu {
 				jumped = this.jz();
 				break;
 
+			case 0xce:
+				this.aci();
+				break;
+
 			case 0xd2:
 				jumped = this.jnc();
 				break;
@@ -351,6 +355,15 @@ export class Cpu {
 	protected adi() {
 		const lhs = this.a;
 		const rhs = this.getData8();
+		const answer = u16(lhs + rhs);
+
+		this.conditions.setAll(answer, u8((lhs & 0xf) + (rhs & 0xf)));
+		this.a = u8(answer);
+	}
+
+	protected aci() {
+		const lhs = this.a;
+		const rhs = u8(this.getData8() + +this.conditions.cy);
 		const answer = u16(lhs + rhs);
 
 		this.conditions.setAll(answer, u8((lhs & 0xf) + (rhs & 0xf)));
