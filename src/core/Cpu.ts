@@ -346,6 +346,38 @@ export class Cpu {
 				jumped = this.jm();
 				break;
 
+			case 0xdc:
+				jumped = this.cc();
+				break;
+
+			case 0xcc:
+				jumped = this.cz();
+				break;
+
+			case 0xd4:
+				jumped = this.cnc();
+				break;
+
+			case 0xec:
+				jumped = this.cpe();
+				break;
+
+			case 0xe4:
+				jumped = this.cpo();
+				break;
+
+			case 0xfc:
+				jumped = this.cm();
+				break;
+
+			case 0xf4:
+				jumped = this.cp();
+				break;
+
+			case 0xc4:
+				jumped = this.cnz();
+				break;
+
 
 			/*****************
 			 * LOGICAL GROUP *
@@ -923,6 +955,81 @@ export class Cpu {
 	protected jm() {
 		if (this.conditions.s) {
 			this.jump();
+			return true;
+		}
+		return false;
+	}
+
+	protected call() {
+		const ret = u16(this.pc + 3);
+
+		this.memory.write(u16(this.sp - 1), u8(ret >> 8));
+		this.memory.write(u16(this.sp - 2), u8(ret));
+		this.sp = u16(this.sp - 2);
+		this.jump();
+
+		return true;
+	}
+
+	protected cz() {
+		if (this.conditions.z) {
+			this.call();
+			return true;
+		}
+		return false;
+	}
+
+	protected cnz() {
+		if (!this.conditions.z) {
+			this.call();
+			return true;
+		}
+		return false;
+	}
+
+	protected cc() {
+		if (this.conditions.cy) {
+			this.call();
+			return true;
+		}
+		return false;
+	}
+
+	protected cnc() {
+		if (!this.conditions.cy) {
+			this.call();
+			return true;
+		}
+		return false;
+	}
+
+	protected cpe() {
+		if (this.conditions.p) {
+			this.call();
+			return true;
+		}
+		return false;
+	}
+
+	protected cpo() {
+		if (!this.conditions.p) {
+			this.call();
+			return true;
+		}
+		return false;
+	}
+
+	protected cm() {
+		if (this.conditions.s) {
+			this.call();
+			return true;
+		}
+		return false;
+	}
+
+	protected cp() {
+		if (!this.conditions.s) {
+			this.call();
 			return true;
 		}
 		return false;
