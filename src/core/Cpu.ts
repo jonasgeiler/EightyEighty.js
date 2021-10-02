@@ -378,6 +378,38 @@ export class Cpu {
 				jumped = this.cnz();
 				break;
 
+			case 0xd8:
+				jumped = this.rc();
+				break;
+
+			case 0xd0:
+				jumped = this.rnc();
+				break;
+
+			case 0xc8:
+				jumped = this.rz();
+				break;
+
+			case 0xc0:
+				jumped = this.rnz();
+				break;
+
+			case 0xf8:
+				jumped = this.rm();
+				break;
+
+			case 0xf0:
+				jumped = this.rp();
+				break;
+
+			case 0xe8:
+				jumped = this.rpe();
+				break;
+
+			case 0xe0:
+				jumped = this.rpo();
+				break;
+
 
 			/*****************
 			 * LOGICAL GROUP *
@@ -538,10 +570,6 @@ export class Cpu {
 
 	protected getData16(): u16 {
 		return u16((this.memory.read(u16(this.pc + 2)) << 8) | this.memory.read(u16(this.pc + 1)));
-	}
-
-	protected jump() {
-		this.pc = this.getData16();
 	}
 
 
@@ -892,71 +920,47 @@ export class Cpu {
 	 ****************/
 
 	protected jmp() {
-		this.jump();
+		this.pc = this.getData16();
 		return true;
 	}
 
 	protected jnc() {
-		if (!this.conditions.cy) {
-			this.jump();
-			return true;
-		}
+		if (!this.conditions.cy) return this.jmp();
 		return false;
 	}
 
 	protected jc() {
-		if (this.conditions.cy) {
-			this.jump();
-			return true;
-		}
+		if (this.conditions.cy) return this.jmp();
 		return false;
 	}
 
 	protected jp() {
-		if (!this.conditions.s) {
-			this.jump();
-			return true;
-		}
+		if (!this.conditions.s) return this.jmp();
 		return false;
 	}
 
 	protected jpo() {
-		if (!this.conditions.p) {
-			this.jump();
-			return true;
-		}
+		if (!this.conditions.p) return this.jmp();
 		return false;
 	}
 
 	protected jpe() {
-		if (this.conditions.p) {
-			this.jump();
-			return true;
-		}
+		if (this.conditions.p) return this.jmp();
 		return false;
 	}
 
 	protected jz() {
-		if (this.conditions.z) {
-			this.jump();
-			return true;
-		}
+		if (this.conditions.z) return this.jmp();
 		return false;
 	}
 
 	protected jnz() {
-		if (!this.conditions.z) {
-			this.jump();
-			return true;
-		}
+		if (!this.conditions.z) return this.jmp();
 		return false;
 	}
 
 	protected jm() {
-		if (this.conditions.s) {
-			this.jump();
-			return true;
-		}
+		if (this.conditions.s) return this.jmp();
 		return false;
 	}
 
@@ -966,72 +970,98 @@ export class Cpu {
 		this.memory.write(u16(this.sp - 1), u8(ret >> 8));
 		this.memory.write(u16(this.sp - 2), u8(ret));
 		this.sp = u16(this.sp - 2);
-		this.jump();
+		this.jmp();
 
 		return true;
 	}
 
 	protected cz() {
-		if (this.conditions.z) {
-			this.call();
-			return true;
-		}
+		if (this.conditions.z) return this.call();
 		return false;
 	}
 
 	protected cnz() {
-		if (!this.conditions.z) {
-			this.call();
-			return true;
-		}
+		if (!this.conditions.z) return this.call();
 		return false;
 	}
 
 	protected cc() {
-		if (this.conditions.cy) {
-			this.call();
-			return true;
-		}
+		if (this.conditions.cy) return this.call();
 		return false;
 	}
 
 	protected cnc() {
-		if (!this.conditions.cy) {
-			this.call();
-			return true;
-		}
+		if (!this.conditions.cy) return this.call();
 		return false;
 	}
 
 	protected cpe() {
-		if (this.conditions.p) {
-			this.call();
-			return true;
-		}
+		if (this.conditions.p) return this.call();
 		return false;
 	}
 
 	protected cpo() {
-		if (!this.conditions.p) {
-			this.call();
-			return true;
-		}
+		if (!this.conditions.p) return this.call();
 		return false;
 	}
 
 	protected cm() {
-		if (this.conditions.s) {
-			this.call();
-			return true;
-		}
+		if (this.conditions.s) return this.call();
 		return false;
 	}
 
 	protected cp() {
-		if (!this.conditions.s) {
-			this.call();
-			return true;
-		}
+		if (!this.conditions.s) return this.call();
+		return false;
+	}
+
+	protected ret() {
+		const low = this.memory.read(this.sp);
+		const high = this.memory.read(u16(this.sp + 1));
+
+		this.pc = u16((high << 8) | low);
+		this.sp = u16(this.sp + 2);
+
+		return true;
+	}
+
+	protected rc() {
+		if (this.conditions.cy) return this.ret();
+		return false;
+	}
+
+	protected rnc() {
+		if (!this.conditions.cy) return this.ret();
+		return false;
+	}
+
+	protected rz() {
+		if (this.conditions.z) return this.ret();
+		return false;
+	}
+
+	protected rnz() {
+		if (!this.conditions.z) return this.ret();
+		return false;
+	}
+
+	protected rm() {
+		if (this.conditions.s) return this.ret();
+		return false;
+	}
+
+	protected rp() {
+		if (!this.conditions.s) return this.ret();
+		return false;
+	}
+
+	protected rpe() {
+		if (this.conditions.p) return this.ret();
+		return false;
+	}
+
+	protected rpo() {
+		if (!this.conditions.p) return this.ret();
 		return false;
 	}
 
