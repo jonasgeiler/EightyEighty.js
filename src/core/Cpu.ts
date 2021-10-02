@@ -793,27 +793,27 @@ export class Cpu {
 				return;
 
 			case 0x0c:
-				this.b = u8(this.c + 1);
+				this.c = u8(this.c + 1);
 				this.conditions.setAllExceptCarry(u16(this.c), this.c);
 				return;
 
 			case 0x14:
-				this.b = u8(this.d + 1);
+				this.d = u8(this.d + 1);
 				this.conditions.setAllExceptCarry(u16(this.d), this.d);
 				return;
 
 			case 0x1c:
-				this.b = u8(this.e + 1);
+				this.e = u8(this.e + 1);
 				this.conditions.setAllExceptCarry(u16(this.e), this.e);
 				return;
 
 			case 0x24:
-				this.b = u8(this.h + 1);
+				this.h = u8(this.h + 1);
 				this.conditions.setAllExceptCarry(u16(this.h), this.h);
 				return;
 
 			case 0x2c:
-				this.b = u8(this.l + 1);
+				this.l = u8(this.l + 1);
 				this.conditions.setAllExceptCarry(u16(this.l), this.l);
 				return;
 
@@ -826,7 +826,7 @@ export class Cpu {
 				return;
 
 			case 0x3c:
-				this.b = u8(this.a + 1);
+				this.a = u8(this.a + 1);
 				this.conditions.setAllExceptCarry(u16(this.a), this.a);
 				return;
 
@@ -838,28 +838,46 @@ export class Cpu {
 	protected dcr(opcode: u8) {
 		switch (opcode) {
 			case 0x05:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.b = u8(this.b - 1);
+				this.conditions.setAllExceptCarry(u16(this.b), this.b);
+				return;
 
 			case 0x0d:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.c = u8(this.c - 1);
+				this.conditions.setAllExceptCarry(u16(this.c), this.c);
+				return;
 
 			case 0x15:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.d = u8(this.d - 1);
+				this.conditions.setAllExceptCarry(u16(this.d), this.d);
+				return;
 
 			case 0x1d:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.e = u8(this.e - 1);
+				this.conditions.setAllExceptCarry(u16(this.e), this.e);
+				return;
 
 			case 0x25:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.h = u8(this.h - 1);
+				this.conditions.setAllExceptCarry(u16(this.h), this.h);
+				return;
 
 			case 0x2d:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.l = u8(this.l - 1);
+				this.conditions.setAllExceptCarry(u16(this.l), this.l);
+				return;
 
 			case 0x35:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				const value = u8(this.getOffset() - 1);
+
+				this.conditions.setAllExceptCarry(u16(value), value);
+				this.setOffset(value);
+				return;
 
 			case 0x3d:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.a = u8(this.a - 1);
+				this.conditions.setAllExceptCarry(u16(this.a), this.a);
+				return;
 
 			default:
 				throw new Cpu.UnreachableError();
