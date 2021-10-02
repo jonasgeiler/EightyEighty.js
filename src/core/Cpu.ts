@@ -32,12 +32,12 @@ export class Cpu {
 
 		machine;
 
-		console.log(`[${toHexStr(this.pc, 4)}]\t` +
+		console.log(`[${toHexStr(this.pc, 4)}]  ` +
 		            `${toHexStr(opcode)} ` +
 		            (getOpcodeLength(opcode) >= 2 ? toHexStr(this.memory.read(u16(this.pc + 1))) : '  ') +
 		            ' ' +
 		            (getOpcodeLength(opcode) == 3 ? toHexStr(this.memory.read(u16(this.pc + 2))) : '  ') +
-		            `\t${getOpcodeName(opcode)}\t` +
+		            `\t${getOpcodeName(opcode).padEnd(8, ' ')}\t` +
 		            `(Flags: ${this.conditions.toString()}, ` +
 		            `A: ${toHexStr(this.a)}, ` +
 		            `B: ${toHexStr(this.b)}, ` +
@@ -242,7 +242,7 @@ export class Cpu {
 			case 0x85:
 			case 0x86:
 			case 0x87:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.add(opcode);
+				this.add(opcode);
 				break;
 
 			case 0x88:
@@ -501,7 +501,7 @@ export class Cpu {
 			case 0xad:
 			case 0xae:
 			case 0xaf:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.xra(opcode);
+				this.xra(opcode);
 				break;
 
 
@@ -572,64 +572,78 @@ export class Cpu {
 		return u16((this.memory.read(u16(this.pc + 2)) << 8) | this.memory.read(u16(this.pc + 1)));
 	}
 
+	protected getRegisterByNum(registerNum: number): u8 {
+		switch (registerNum) {
+			case 0:
+				return this.b;
+
+			case 1:
+				return this.c;
+
+			case 2:
+				return this.d;
+
+			case 3:
+				return this.e;
+
+			case 4:
+				return this.h;
+
+			case 5:
+				return this.l;
+
+			case 6:
+				return this.getOffset();
+
+			case 7:
+				return this.a;
+
+			default:
+				throw new Cpu.UnreachableError();
+		}
+	}
+
+	protected setRegisterByNum(registerNum: number, newValue: u8) {
+		switch (registerNum) {
+			case 0:
+				return this.b = newValue;
+
+			case 1:
+				return this.c = newValue;
+
+			case 2:
+				return this.d = newValue;
+
+			case 3:
+				return this.e = newValue;
+
+			case 4:
+				return this.h = newValue;
+
+			case 5:
+				return this.l = newValue;
+
+			case 6:
+				return this.setOffset(newValue);
+
+			case 7:
+				return this.a;
+
+			default:
+				throw new Cpu.UnreachableError();
+		}
+	}
+
 
 	/***********************
 	 * DATA TRANSFER GROUP *
 	 ***********************/
 
 	protected mov(opcode: u8) {
-		const setRegister = (registerNum: number, value: u8) => {
-			switch (registerNum) {
-				case 0:
-					return this.b = value;
-				case 1:
-					return this.c = value;
-				case 2:
-					return this.d = value;
-				case 3:
-					return this.e = value;
-				case 4:
-					return this.h = value;
-				case 5:
-					return this.l = value;
-				case 6:
-					return this.setOffset(value);
-				case 7:
-					return this.a;
-
-				default:
-					throw new Cpu.UnreachableError();
-			}
-		}
-
-		const getRegister = (registerNum: number) => {
-			switch (registerNum) {
-				case 0:
-					return this.b;
-				case 1:
-					return this.c;
-				case 2:
-					return this.d;
-				case 3:
-					return this.e;
-				case 4:
-					return this.h;
-				case 5:
-					return this.l;
-				case 6:
-					return this.getOffset();
-				case 7:
-					return this.a;
-
-				default:
-					throw new Cpu.UnreachableError();
-			}
-		}
-
-		const dest = (opcode >> 3) & 7;
 		const src = opcode & 7;
+		const dest = (opcode >> 3) & 7;
 
-		setRegister(dest, getRegister(src));
+		this.setRegisterByNum(dest, this.getRegisterByNum(src));
 	}
 
 	protected mvi(opcode: u8) {
@@ -749,6 +763,17 @@ export class Cpu {
 	 * ARITHMETIC GROUP *
 	 ********************/
 
+	protected add(opcode: u8) {
+		const reg = opcode & 0x07;
+
+		const rhs = this.getRegisterByNum(reg);
+		const lhs = this.a;
+		const answer = u16(lhs + rhs);
+
+		this.a = u8(answer);
+		this.conditions.setAll(answer, u8((lhs & 0xf) + (rhs & 0xf)));
+	}
+
 	protected adi() {
 		const lhs = this.a;
 		const rhs = this.getData8();
@@ -786,101 +811,28 @@ export class Cpu {
 	}
 
 	protected inr(opcode: u8) {
-		switch (opcode) {
-			case 0x04:
-				this.b = u8(this.b + 1);
-				this.conditions.setAllExceptCarry(u16(this.b), this.b);
-				return;
+		const reg = opcode >> 3;
+		const answer = u8(this.getRegisterByNum(reg) + 1);
 
-			case 0x0c:
-				this.c = u8(this.c + 1);
-				this.conditions.setAllExceptCarry(u16(this.c), this.c);
-				return;
-
-			case 0x14:
-				this.d = u8(this.d + 1);
-				this.conditions.setAllExceptCarry(u16(this.d), this.d);
-				return;
-
-			case 0x1c:
-				this.e = u8(this.e + 1);
-				this.conditions.setAllExceptCarry(u16(this.e), this.e);
-				return;
-
-			case 0x24:
-				this.h = u8(this.h + 1);
-				this.conditions.setAllExceptCarry(u16(this.h), this.h);
-				return;
-
-			case 0x2c:
-				this.l = u8(this.l + 1);
-				this.conditions.setAllExceptCarry(u16(this.l), this.l);
-				return;
-
-			case 0x34:
-				const lhs = this.getOffset();
-				const value = u8(lhs + 1);
-
-				this.conditions.setAllExceptCarry(u16(value), u8((lhs & 0xf) + 1));
-				this.setOffset(value);
-				return;
-
-			case 0x3c:
-				this.a = u8(this.a + 1);
-				this.conditions.setAllExceptCarry(u16(this.a), this.a);
-				return;
-
-			default:
-				throw new Cpu.UnreachableError();
+		if (opcode === 0x34) {
+			this.conditions.setAllExceptCarry(u16(answer), u8((answer & 0xf) + 1));
+			this.setOffset(answer);
+		} else {
+			this.setRegisterByNum(reg, answer);
+			this.conditions.setAllExceptCarry(u16(answer), answer);
 		}
 	}
 
 	protected dcr(opcode: u8) {
-		switch (opcode) {
-			case 0x05:
-				this.b = u8(this.b - 1);
-				this.conditions.setAllExceptCarry(u16(this.b), this.b);
-				return;
+		const reg = opcode >> 3;
+		const answer = u8(this.getRegisterByNum(reg) - 1);
 
-			case 0x0d:
-				this.c = u8(this.c - 1);
-				this.conditions.setAllExceptCarry(u16(this.c), this.c);
-				return;
-
-			case 0x15:
-				this.d = u8(this.d - 1);
-				this.conditions.setAllExceptCarry(u16(this.d), this.d);
-				return;
-
-			case 0x1d:
-				this.e = u8(this.e - 1);
-				this.conditions.setAllExceptCarry(u16(this.e), this.e);
-				return;
-
-			case 0x25:
-				this.h = u8(this.h - 1);
-				this.conditions.setAllExceptCarry(u16(this.h), this.h);
-				return;
-
-			case 0x2d:
-				this.l = u8(this.l - 1);
-				this.conditions.setAllExceptCarry(u16(this.l), this.l);
-				return;
-
-			case 0x35:
-				const value = u8(this.getOffset() - 1);
-
-				this.conditions.setAllExceptCarry(u16(value), value);
-				this.setOffset(value);
-				return;
-
-			case 0x3d:
-				this.a = u8(this.a - 1);
-				this.conditions.setAllExceptCarry(u16(this.a), this.a);
-				return;
-
-			default:
-				throw new Cpu.UnreachableError();
+		if (opcode === 0x35) {
+			this.conditions.setAllExceptCarry(u16(answer), answer);
+			this.setOffset(answer);
+		} else {
+			this.setRegisterByNum(reg, answer);
+			this.conditions.setAllExceptCarry(u16(answer), answer);
 		}
 	}
 
@@ -1216,6 +1168,51 @@ export class Cpu {
 		this.conditions.setP(answer);
 		this.conditions.setS(answer);
 		this.conditions.setAC(u8((this.a & 0xf) - (data & 0xf)));
+	}
+
+	protected xra(opcode: u8) {
+		let rhs: u8;
+		switch (opcode) {
+			case 0xa8:
+				rhs = this.b;
+				break;
+
+			case 0xa9:
+				rhs = this.c;
+				break;
+
+			case 0xaa:
+				rhs = this.d;
+				break;
+
+			case 0xab:
+				rhs = this.e;
+				break;
+
+			case 0xac:
+				rhs = this.h;
+				break;
+
+			case 0xad:
+				rhs = this.l;
+				break;
+
+			case 0xae:
+				rhs = this.getOffset();
+				break;
+
+			case 0xaf:
+				rhs = this.a;
+				break;
+
+			default:
+				throw new Cpu.UnreachableError();
+		}
+
+		const lhs = this.a;
+
+		this.a = u8(lhs ^ rhs);
+		this.conditions.setAll(u16(this.a), u8((lhs & 0xf) ^ (rhs & 0xf)));
 	}
 
 
