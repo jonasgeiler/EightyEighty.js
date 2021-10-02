@@ -733,28 +733,47 @@ export class Cpu {
 	protected inr(opcode: u8) {
 		switch (opcode) {
 			case 0x04:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.b = u8(this.b + 1);
+				this.conditions.setAllExceptCarry(u16(this.b), this.b);
+				return;
 
 			case 0x0c:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.b = u8(this.c + 1);
+				this.conditions.setAllExceptCarry(u16(this.c), this.c);
+				return;
 
 			case 0x14:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.b = u8(this.d + 1);
+				this.conditions.setAllExceptCarry(u16(this.d), this.d);
+				return;
 
 			case 0x1c:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.b = u8(this.e + 1);
+				this.conditions.setAllExceptCarry(u16(this.e), this.e);
+				return;
 
 			case 0x24:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.b = u8(this.h + 1);
+				this.conditions.setAllExceptCarry(u16(this.h), this.h);
+				return;
 
 			case 0x2c:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.b = u8(this.l + 1);
+				this.conditions.setAllExceptCarry(u16(this.l), this.l);
+				return;
 
 			case 0x34:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				const lhs = this.getOffset();
+				const value = u8(lhs + 1);
+
+				this.conditions.setAllExceptCarry(u16(value), u8((lhs & 0xf) + 1));
+				this.setOffset(value);
+				return;
 
 			case 0x3c:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.b = u8(this.a + 1);
+				this.conditions.setAllExceptCarry(u16(this.a), this.a);
+				return;
 
 			default:
 				throw new Cpu.UnreachableError();
