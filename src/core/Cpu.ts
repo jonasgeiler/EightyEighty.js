@@ -58,6 +58,16 @@ export class Cpu {
 			case 0x38:
 				break;
 
+			case 0x76:
+				console.log('Exiting...');
+				process.exit(0);
+				break;
+
+
+			/***********************
+			 * DATA TRANSFER GROUP *
+			 ***********************/
+
 			case 0x01:
 			case 0x11:
 			case 0x21:
@@ -69,6 +79,113 @@ export class Cpu {
 			case 0x12:
 				this.stax(opcode);
 				break;
+
+			case 0x06:
+			case 0x0e:
+			case 0x16:
+			case 0x1e:
+			case 0x26:
+			case 0x2e:
+			case 0x36:
+			case 0x3e:
+				this.mvi(opcode);
+				break;
+
+			case 0x0a:
+			case 0x1a:
+				this.ldax(opcode);
+				break;
+
+			case 0x40:
+			case 0x41:
+			case 0x42:
+			case 0x43:
+			case 0x44:
+			case 0x45:
+			case 0x46:
+			case 0x47:
+			case 0x48:
+			case 0x49:
+			case 0x4a:
+			case 0x4b:
+			case 0x4c:
+			case 0x4d:
+			case 0x4e:
+			case 0x4f:
+			case 0x50:
+			case 0x51:
+			case 0x52:
+			case 0x53:
+			case 0x54:
+			case 0x55:
+			case 0x56:
+			case 0x57:
+			case 0x58:
+			case 0x59:
+			case 0x5a:
+			case 0x5b:
+			case 0x5c:
+			case 0x5d:
+			case 0x5e:
+			case 0x5f:
+			case 0x60:
+			case 0x61:
+			case 0x62:
+			case 0x63:
+			case 0x64:
+			case 0x65:
+			case 0x66:
+			case 0x67:
+			case 0x68:
+			case 0x69:
+			case 0x6a:
+			case 0x6b:
+			case 0x6c:
+			case 0x6d:
+			case 0x6e:
+			case 0x6f:
+			case 0x70:
+			case 0x71:
+			case 0x72:
+			case 0x73:
+			case 0x74:
+			case 0x75:
+			case 0x77:
+			case 0x78:
+			case 0x79:
+			case 0x7a:
+			case 0x7b:
+			case 0x7c:
+			case 0x7d:
+			case 0x7e:
+			case 0x7f:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.mov(opcode);
+				break;
+
+			case 0xe3:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.xthl();
+				break;
+
+			case 0xe9:
+				throw new Cpu.UnimplementedInstructionError(opcode); // jumped = this.pchl();
+				break;
+
+			case 0xeb:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.xchg();
+				break;
+
+			case 0xee:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.xri();
+				break;
+
+			case 0xf9:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.sphl();
+				break;
+
+
+			/********************
+			 * ARITHMETIC GROUP *
+			 ********************/
 
 			case 0x03:
 			case 0x13:
@@ -99,31 +216,11 @@ export class Cpu {
 				this.dcr(opcode);
 				break;
 
-			case 0x06:
-			case 0x0e:
-			case 0x16:
-			case 0x1e:
-			case 0x26:
-			case 0x2e:
-			case 0x36:
-			case 0x3e:
-				this.mvi(opcode);
-				break;
-
-			case 0x07:
-				this.rlc();
-				break;
-
 			case 0x09:
 			case 0x19:
 			case 0x29:
 			case 0x39:
 				this.dad(opcode);
-				break;
-
-			case 0x0a:
-			case 0x1a:
-				this.ldax(opcode);
 				break;
 
 			case 0x0b:
@@ -133,25 +230,85 @@ export class Cpu {
 				this.dcx(opcode);
 				break;
 
-			case 0x0f:
-				this.rrc();
-				break;
-
-			case 0x17:
-				this.ral();
-				break;
-
-			case 0x1f:
-				this.rar();
-				break;
-
-			case 0x22:
-				this.shld();
-				break;
-
 			case 0x27:
 				this.daa();
 				break;
+
+			case 0x80:
+			case 0x81:
+			case 0x82:
+			case 0x83:
+			case 0x84:
+			case 0x85:
+			case 0x86:
+			case 0x87:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.add(opcode);
+				break;
+
+			case 0x88:
+			case 0x89:
+			case 0x8a:
+			case 0x8b:
+			case 0x8c:
+			case 0x8d:
+			case 0x8e:
+			case 0x8f:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.adc(opcode);
+				break;
+
+			case 0x90:
+			case 0x91:
+			case 0x92:
+			case 0x93:
+			case 0x94:
+			case 0x95:
+			case 0x96:
+			case 0x97:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.sub(opcode);
+				break;
+
+			case 0x98:
+			case 0x99:
+			case 0x9a:
+			case 0x9b:
+			case 0x9c:
+			case 0x9d:
+			case 0x9e:
+			case 0x9f:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.sbb(opcode);
+				break;
+
+			case 0xb8:
+			case 0xb9:
+			case 0xba:
+			case 0xbb:
+			case 0xbc:
+			case 0xbd:
+			case 0xbe:
+			case 0xbf:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.cmp(opcode);
+				break;
+
+			case 0xc6:
+				this.adi();
+				break;
+
+			case 0xce:
+				this.aci();
+				break;
+
+			case 0xd6:
+				this.sui();
+				break;
+
+			case 0xde:
+				this.sbi();
+				break;
+
+
+			/****************
+			 * BRANCH GROUP *
+			 ****************/
 
 			case 0xc2:
 				jumped = this.jnz();
@@ -161,16 +318,8 @@ export class Cpu {
 				jumped = this.jmp();
 				break;
 
-			case 0xc6:
-				this.adi();
-				break;
-
 			case 0xca:
 				jumped = this.jz();
-				break;
-
-			case 0xce:
-				this.aci();
 				break;
 
 			case 0xd2:
@@ -185,10 +334,6 @@ export class Cpu {
 				jumped = this.jpo();
 				break;
 
-			case 0xe6:
-				this.ani();
-				break;
-
 			case 0xea:
 				jumped = this.jpe();
 				break;
@@ -201,9 +346,138 @@ export class Cpu {
 				jumped = this.jm();
 				break;
 
+
+			/*****************
+			 * LOGICAL GROUP *
+			 *****************/
+
+			case 0xe6:
+				this.ani();
+				break;
+
+			case 0xa0:
+			case 0xa1:
+			case 0xa2:
+			case 0xa3:
+			case 0xa4:
+			case 0xa5:
+			case 0xa6:
+			case 0xa7:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.ana(opcode);
+				break;
+
+			case 0x07:
+				this.rlc();
+				break;
+
+			case 0x0f:
+				this.rrc();
+				break;
+
+			case 0x17:
+				this.ral();
+				break;
+
+			case 0x1f:
+				this.rar();
+				break;
+
+			case 0xb0:
+			case 0xb1:
+			case 0xb2:
+			case 0xb3:
+			case 0xb4:
+			case 0xb5:
+			case 0xb6:
+			case 0xb7:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.ora(opcode);
+				break;
+
+			case 0xf6:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.ori();
+				break;
+
+			case 0x37:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.stc();
+				break;
+
+			case 0x2f:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.cma();
+				break;
+
+			case 0x3f:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.cmc();
+				break;
+
+			case 0x22:
+				this.shld();
+				break;
+
+			case 0x2a:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.lhld();
+				break;
+
+			case 0x3a:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.lda();
+				break;
+
+			case 0x32:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.sta();
+				break;
+
 			case 0xfe:
 				this.cpi();
 				break;
+
+			case 0xa8:
+			case 0xa9:
+			case 0xaa:
+			case 0xab:
+			case 0xac:
+			case 0xad:
+			case 0xae:
+			case 0xaf:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.xra(opcode);
+				break;
+
+
+			/*************
+			 * I/O GROUP *
+			 *************/
+
+			case 0xc7:
+			case 0xcf:
+			case 0xd7:
+			case 0xdf:
+			case 0xe7:
+			case 0xef:
+			case 0xf7:
+			case 0xff:
+				throw new Cpu.UnimplementedInstructionError(opcode); // jumped = this.rst(opcode);
+				break;
+
+			case 0xc5:
+			case 0xd5:
+			case 0xe5:
+			case 0xf5:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.push(opcode);
+				break;
+
+			case 0xc1:
+			case 0xd1:
+			case 0xe1:
+			case 0xf1:
+				throw new Cpu.UnimplementedInstructionError(opcode); // this.pop(opcode);
+				break;
+
+			case 0xfb:
+				this.ei();
+				break;
+
+			case 0xf3:
+				this.di();
+				break;
+
 
 			default:
 				throw new Cpu.UnimplementedInstructionError(opcode);
@@ -367,6 +641,24 @@ export class Cpu {
 		const answer = u16(lhs + rhs);
 
 		this.conditions.setAll(answer, u8((lhs & 0xf) + (rhs & 0xf)));
+		this.a = u8(answer);
+	}
+
+	protected sui() {
+		const lhs = this.a;
+		const rhs = this.getData8();
+		const answer = u16(lhs - rhs);
+
+		this.conditions.setAll(answer, u8((lhs & 0xf) - (rhs & 0xf)));
+		this.a = u8(answer);
+	}
+
+	protected sbi() {
+		const lhs = this.a;
+		const rhs = u8(this.getData8() + +this.conditions.cy);
+		const answer = u16(lhs - rhs);
+
+		this.conditions.setAll(answer, u8((lhs & 0xf) - (rhs & 0xf)));
 		this.a = u8(answer);
 	}
 
@@ -687,8 +979,13 @@ export class Cpu {
 	 * I/O GROUP *
 	 *************/
 
+	protected ei() {
+		this.intEnable = true;
+	}
 
-
+	protected di() {
+		this.intEnable = false;
+	}
 }
 
 export namespace Cpu {
