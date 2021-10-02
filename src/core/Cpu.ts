@@ -394,7 +394,7 @@ export class Cpu {
 				break;
 
 			case 0xf6:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.ori();
+				this.ori();
 				break;
 
 			case 0x37:
@@ -954,6 +954,13 @@ export class Cpu {
 	protected rrc() {
 		this.a = rotateBitsRightU8(this.a, 1);
 		this.conditions.cy = (this.a & 0x80) != 0;
+	}
+
+	protected ori() {
+		const answer = u16(this.a | this.getData8());
+
+		this.conditions.setAllExceptAC(answer);
+		this.a = u8(answer);
 	}
 
 	protected shld() {
