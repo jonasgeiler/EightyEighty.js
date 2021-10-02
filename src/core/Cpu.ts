@@ -175,7 +175,7 @@ export class Cpu {
 				break;
 
 			case 0xee:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.xri();
+				this.xri();
 				break;
 
 			case 0xf9:
@@ -619,6 +619,14 @@ export class Cpu {
 			default:
 				throw new Cpu.UnreachableError();
 		}
+	}
+
+	protected xri() {
+		const rhs = this.getData8();
+		const lhs = this.a;
+
+		this.a = u8(lhs ^ rhs);
+		this.conditions.setAll(u16(this.a), this.a);
 	}
 
 
