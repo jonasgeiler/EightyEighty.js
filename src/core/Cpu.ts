@@ -159,7 +159,7 @@ export class Cpu {
 			case 0x7d:
 			case 0x7e:
 			case 0x7f:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.mov(opcode);
+				this.mov(opcode);
 				break;
 
 			case 0xe3:
@@ -576,6 +576,61 @@ export class Cpu {
 	/***********************
 	 * DATA TRANSFER GROUP *
 	 ***********************/
+
+	protected mov(opcode: u8) {
+		const setRegister = (registerNum: number, value: u8) => {
+			switch (registerNum) {
+				case 0:
+					return this.b = value;
+				case 1:
+					return this.c = value;
+				case 2:
+					return this.d = value;
+				case 3:
+					return this.e = value;
+				case 4:
+					return this.h = value;
+				case 5:
+					return this.l = value;
+				case 6:
+					return this.setOffset(value);
+				case 7:
+					return this.a;
+
+				default:
+					throw new Cpu.UnreachableError();
+			}
+		}
+
+		const getRegister = (registerNum: number) => {
+			switch (registerNum) {
+				case 0:
+					return this.b;
+				case 1:
+					return this.c;
+				case 2:
+					return this.d;
+				case 3:
+					return this.e;
+				case 4:
+					return this.h;
+				case 5:
+					return this.l;
+				case 6:
+					return this.getOffset();
+				case 7:
+					return this.a;
+
+				default:
+					throw new Cpu.UnreachableError();
+			}
+		}
+
+		const dest = (opcode >> 3) & 7;
+		const src = opcode & 7;
+
+		setRegister(dest, getRegister(src));
+	}
 
 	protected mvi(opcode: u8) {
 		switch (opcode) {
