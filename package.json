@@ -6,7 +6,7 @@
   "bin": {
     "eightyeighty": "./bin/run"
   },
-  "bugs": "https://github.com/Skayo/EightyEighty.js/issues",
+  "bugs": "https://github.com/Skayo/i8080/issues",
   "dependencies": {
     "@oclif/command": "^1.8.0",
     "@oclif/config": "^1.17.0",
@@ -29,16 +29,16 @@
     "/bin",
     "/dist"
   ],
-  "homepage": "https://github.com/Skayo/EightyEighty.js",
+  "homepage": "https://github.com/Skayo/i8080",
   "keywords": [
     "oclif"
   ],
   "license": "MIT",
   "main": "dist/index.js",
   "oclif": {
-    "bin": "eightyeighty"
+    "bin": "i8080"
   },
-  "repository": "Skayo/EightyEighty.js",
+  "repository": "Skayo/i8080",
   "scripts": {
     "prepack": "rimraf dist && tsc -b && oclif-dev readme",
     "test": "echo NO TESTS",
