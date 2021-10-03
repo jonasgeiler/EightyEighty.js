@@ -427,7 +427,7 @@ export class Cpu {
 			case 0xa5:
 			case 0xa6:
 			case 0xa7:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.ana(opcode);
+				this.ana(opcode);
 				break;
 
 			case 0x07:
@@ -1154,6 +1154,17 @@ export class Cpu {
 		this.a = u8(answer);
 	}
 
+	protected ana(opcode: u8) {
+		const reg = opcode & 0x07;
+
+		const lhs = this.a;
+		const rhs = this.getRegisterByNum(reg);
+		const answer = u8(lhs & rhs);
+
+		this.a = answer;
+		this.conditions.setAll(u16(answer), answer);
+	}
+
 	protected rlc() {
 		this.a = rotateBitsLeftU8(this.a, 1);
 		this.conditions.cy = (this.a & 1) != 0;
@@ -1204,48 +1215,14 @@ export class Cpu {
 	}
 
 	protected xra(opcode: u8) {
-		let rhs: u8;
-		switch (opcode) {
-			case 0xa8:
-				rhs = this.b;
-				break;
-
-			case 0xa9:
-				rhs = this.c;
-				break;
-
-			case 0xaa:
-				rhs = this.d;
-				break;
-
-			case 0xab:
-				rhs = this.e;
-				break;
-
-			case 0xac:
-				rhs = this.h;
-				break;
-
-			case 0xad:
-				rhs = this.l;
-				break;
-
-			case 0xae:
-				rhs = this.getOffset();
-				break;
-
-			case 0xaf:
-				rhs = this.a;
-				break;
-
-			default:
-				throw new Cpu.UnreachableError();
-		}
+		const reg = opcode & 0x07;
 
 		const lhs = this.a;
+		const rhs = this.getRegisterByNum(reg);
+		const answer = u8(lhs ^ rhs);
 
-		this.a = u8(lhs ^ rhs);
-		this.conditions.setAll(u16(this.a), u8((lhs & 0xf) ^ (rhs & 0xf)));
+		this.a = answer;
+		this.conditions.setAll(u16(answer), u8((lhs & 0xf) ^ (rhs & 0xf)));
 	}
 
 
