@@ -275,7 +275,7 @@ export class Cpu {
 			case 0x9d:
 			case 0x9e:
 			case 0x9f:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.sbb(opcode);
+				this.sbb(opcode);
 				break;
 
 			case 0xb8:
@@ -808,6 +808,17 @@ export class Cpu {
 
 		const lhs = this.a;
 		const rhs = this.getRegisterByNum(reg);
+		const answer = u16(lhs - rhs);
+
+		this.a = u8(answer);
+		this.conditions.setAll(answer, u8((lhs & 0xf) - (rhs & 0xf)));
+	}
+
+	protected sbb(opcode: u8) {
+		const reg = opcode & 0x07;
+
+		const lhs = this.a;
+		const rhs = u16(this.getRegisterByNum(reg) + +this.conditions.cy);
 		const answer = u16(lhs - rhs);
 
 		this.a = u8(answer);
