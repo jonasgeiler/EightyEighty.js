@@ -486,7 +486,7 @@ export class Cpu {
 				break;
 
 			case 0x32:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.sta();
+				this.sta();
 				break;
 
 			case 0xfe:
@@ -1205,6 +1205,12 @@ export class Cpu {
 
 		this.memory.write(address, this.l);
 		this.memory.write(u16(address + 1), this.h);
+	}
+
+	protected sta() {
+		const address = this.getData16();
+
+		this.memory.write(address, this.a);
 	}
 
 	protected cpi() {
