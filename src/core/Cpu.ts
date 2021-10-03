@@ -482,7 +482,7 @@ export class Cpu {
 				break;
 
 			case 0x3a:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.lda();
+				this.lda();
 				break;
 
 			case 0x32:
@@ -1205,6 +1205,12 @@ export class Cpu {
 
 		this.memory.write(address, this.l);
 		this.memory.write(u16(address + 1), this.h);
+	}
+
+	protected lda() {
+		const address = this.getData16();
+
+		this.a = this.memory.read(address);
 	}
 
 	protected sta() {
