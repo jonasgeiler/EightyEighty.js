@@ -253,7 +253,7 @@ export class Cpu {
 			case 0x8d:
 			case 0x8e:
 			case 0x8f:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.adc(opcode);
+				this.adc(opcode);
 				break;
 
 			case 0x90:
@@ -774,6 +774,17 @@ export class Cpu {
 		this.conditions.setAll(answer, u8((lhs & 0xf) + (rhs & 0xf)));
 	}
 
+	protected adc(opcode: u8) {
+		const reg = opcode & 0x07;
+
+		const lhs = this.a;
+		const rhs = u16(this.getRegisterByNum(reg) + +this.conditions.cy);
+		const answer = u16(lhs + rhs);
+
+		this.a = u8(answer);
+		this.conditions.setAll(answer, u8((lhs & 0xf) + (rhs & 0xf)));
+	}
+
 	protected adi() {
 		const lhs = this.a;
 		const rhs = this.getData8();
@@ -800,7 +811,7 @@ export class Cpu {
 		const answer = u16(lhs - rhs);
 
 		this.a = u8(answer);
-		this.conditions.setAll(answer, u8((lhs & 0xf) - (rhs & 0xf)))
+		this.conditions.setAll(answer, u8((lhs & 0xf) - (rhs & 0xf)));
 	}
 
 	protected sui() {
