@@ -627,7 +627,7 @@ export class Cpu {
 				return this.setOffset(newValue);
 
 			case 7:
-				return this.a;
+				return this.a = newValue;
 
 			default:
 				throw new Cpu.UnreachableError();
@@ -647,42 +647,9 @@ export class Cpu {
 	}
 
 	protected mvi(opcode: u8) {
-		switch (opcode) {
-			case 0x06:
-				this.b = this.getData8();
-				break;
+		const dest = opcode >> 3;
 
-			case 0x0e:
-				this.c = this.getData8();
-				break;
-
-			case 0x16:
-				this.d = this.getData8();
-				break;
-
-			case 0x1e:
-				this.e = this.getData8();
-				break;
-
-			case 0x26:
-				this.h = this.getData8();
-				break;
-
-			case 0x2e:
-				this.l = this.getData8();
-				break;
-
-			case 0x36:
-				this.setOffset(this.getData8());
-				break;
-
-			case 0x3e:
-				this.a = this.getData8();
-				break;
-
-			default:
-				throw new Cpu.UnreachableError();
-		}
+		this.setRegisterByNum(dest, this.getData8());
 	}
 
 	protected lxi(opcode: u8) {
