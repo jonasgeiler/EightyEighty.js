@@ -171,7 +171,7 @@ export class Cpu {
 				break;
 
 			case 0xeb:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.xchg();
+				this.xchg();
 				break;
 
 			case 0xee:
@@ -723,6 +723,16 @@ export class Cpu {
 
 		this.a = u8(lhs ^ rhs);
 		this.conditions.setAll(u16(this.a), this.a);
+	}
+
+	protected xchg() {
+		const l = this.l;
+		this.l = this.e;
+		this.e = l;
+
+		const h = this.h;
+		this.h = this.d;
+		this.d = h;
 	}
 
 
