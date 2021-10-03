@@ -848,17 +848,36 @@ export class Cpu {
 
 	protected inx(opcode: u8) {
 		switch (opcode) {
-			case 0x03:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+			case 0x03: {
+				const bc = u16((this.b << 8) | this.c);
+				const answer = u16(bc + 1);
 
-			case 0x13:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.b = u8(answer >> 8);
+				this.c = u8(answer);
+				return;
+			}
 
-			case 0x23:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+			case 0x13: {
+				const de = u16((this.d << 8) | this.e);
+				const answer = u16(de + 1);
+
+				this.d = u8(answer >> 8);
+				this.e = u8(answer);
+				return;
+			}
+
+			case 0x23: {
+				const hl = u16((this.h << 8) | this.l);
+				const answer = u16(hl + 1);
+
+				this.h = u8(answer >> 8);
+				this.l = u8(answer);
+				return;
+			}
 
 			case 0x33:
-				throw new Cpu.UnimplementedInstructionError(opcode);
+				this.sp = u16(this.sp + 1);
+				return;
 
 			default:
 				throw new Cpu.UnreachableError();
