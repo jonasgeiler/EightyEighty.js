@@ -286,7 +286,7 @@ export class Cpu {
 			case 0xbd:
 			case 0xbe:
 			case 0xbf:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.cmp(opcode);
+				this.cmp(opcode);
 				break;
 
 			case 0xc6:
@@ -768,6 +768,16 @@ export class Cpu {
 
 		this.conditions.setAll(answer, u8((lhs & 0xf) + (rhs & 0xf)));
 		this.a = u8(answer);
+	}
+
+	protected cmp(opcode: u8) {
+		const reg = opcode & 0x07;
+
+		const lhs = this.a;
+		const rhs = this.getRegisterByNum(reg);
+		const answer = u16(lhs - rhs);
+
+		this.conditions.setAll(answer, u8((lhs & 0xf) - (rhs & 0xf)));
 	}
 
 	protected sub(opcode: u8) {
