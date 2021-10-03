@@ -478,7 +478,7 @@ export class Cpu {
 				break;
 
 			case 0x2a:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.lhld();
+				this.lhld();
 				break;
 
 			case 0x3a:
@@ -681,13 +681,13 @@ export class Cpu {
 	protected ldax(opcode: u8) {
 		switch (opcode) {
 			case 0x0a: {
-				const offset = u16(this.b << 8 | this.c);
+				const offset = u16((this.b << 8) | this.c);
 				this.a = this.memory.read(offset);
 				return;
 			}
 
 			case 0x1a: {
-				const offset = u16(this.d << 8 | this.e);
+				const offset = u16((this.d << 8) | this.e);
 				this.a = this.memory.read(offset);
 				return;
 			}
@@ -1207,6 +1207,13 @@ export class Cpu {
 		this.memory.write(u16(address + 1), this.h);
 	}
 
+	protected lhld() {
+		const address = this.getData16();
+
+		this.l = this.memory.read(address);
+		this.h = this.memory.read(u16(address + 1));
+	}
+
 	protected lda() {
 		const address = this.getData16();
 
@@ -1223,11 +1230,8 @@ export class Cpu {
 		const data = this.getData8();
 		const answer = u16(this.a - data);
 
-		this.conditions.setZ(answer);
+		this.conditions.setAllExceptCarry(answer, u8((this.a & 0xf) - (data & 0xf)));
 		this.conditions.cy = this.a < data;
-		this.conditions.setP(answer);
-		this.conditions.setS(answer);
-		this.conditions.setAC(u8((this.a & 0xf) - (data & 0xf)));
 	}
 
 	protected xra(opcode: u8) {
@@ -1235,10 +1239,10 @@ export class Cpu {
 
 		const lhs = this.a;
 		const rhs = this.getRegisterByNum(reg);
-		const answer = u8(lhs ^ rhs);
+		const answer = u16(lhs ^ rhs);
 
-		this.a = answer;
-		this.conditions.setAll(u16(answer), u8((lhs & 0xf) ^ (rhs & 0xf)));
+		this.a = u8(answer);
+		this.conditions.setAll(answer, u8((lhs & 0xf) ^ (rhs & 0xf)));
 	}
 
 

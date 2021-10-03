@@ -72,10 +72,10 @@ export class ConditionCodes {
 
 	/**
 	 * Set the AC (auxillary carry) flag.
-	 * @param answer - Result from an operation.
+	 * @param acCheck
 	 */
-	public setAC(answer: u8) {
-		this.ac = answer > 0xf;
+	public setAC(acCheck: u8) {
+		this.ac = acCheck > 0xf;
 	}
 
 	/**
