@@ -1,6 +1,19 @@
 import { u8 } from 'typed-numbers';
 
 /**
+ * Converts a number into a hex string with zero-padding.
+ * @param num - The number to convert.
+ * @param minLength - Minimum length of the resulting string.
+ */
+export function toHexStr(num: number, minLength = 2) {
+	const numStr = num.toString(16).toUpperCase();
+
+	if (numStr.startsWith('-')) return '-' + numStr.substr(1).padStart(minLength, '0');
+	return numStr.padStart(minLength, '0');
+}
+
+
+/**
  * Shifts the bits to the left by a specified amount, wrapping the truncated bits to the end of the resulting integer.
  * Please note this isn’t the same operation as the `<<` shifting operator!
  * @param num - The bits (number) to rotate.

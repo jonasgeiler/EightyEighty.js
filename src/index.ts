@@ -1,9 +1,7 @@
 import { Command, flags } from '@oclif/command';
 import { promises as fs } from 'fs';
-import { u16, u8 } from 'typed-numbers';
-import { Cpu } from './core';
-import { toHexStr } from './utils';
-
+import { u16 } from 'typed-numbers';
+import { Cpu, Memory } from './core';
 
 class EightyEightyJs extends Command {
 	public static description = 'A simple Intel 8080 emulator';
@@ -35,22 +33,46 @@ class EightyEightyJs extends Command {
 
 		const programBuffer = await fs.readFile(__dirname + '/../machines/CPU Diagnose/cpudiag.bin');
 
-		const cpu = new Cpu();
-		cpu.loadProgram(programBuffer, 0x0100);
-		cpu.pc = u16(0x100);
+		const mem = new Memory();
+		mem.load(programBuffer, 0x100);
+
+		const cpu = new Cpu(mem);
+		cpu.reg.pc = u16(0x100);
 
 		while (true) {
-			cpu.emulate({
-				input(port: u8): u8 {
-					console.log('input', toHexStr(port));
+			if (cpu.halted) break;
 
-					return u8(0x00);
-				},
+			cpu.next();
 
-				output(port: u8, byte: u8) {
-					console.log('output', toHexStr(port), toHexStr(byte));
-				},
-			});
+			if (cpu.reg.pc == 0x05) {
+				if (cpu.reg.c == 0x09) {
+					let address = cpu.reg.getDE();
+
+					while (true) {
+						const char = String.fromCharCode(mem.get(address));
+
+						if (char == '$') {
+							break;
+						} else {
+							address = u16(address + 1);
+						}
+
+						process.stdout.write(char);
+					}
+				}
+
+				if (cpu.reg.c == 0x02) {
+					const char = String.fromCharCode(cpu.reg.e);
+
+					process.stdout.write(char);
+				}
+			}
+
+			if (cpu.reg.pc == 0x00) {
+				process.stdout.write('\n');
+				process.stdout.write('\n');
+				break;
+			}
 		}
 	}
 }
