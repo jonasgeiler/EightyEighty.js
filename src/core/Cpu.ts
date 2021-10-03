@@ -454,7 +454,7 @@ export class Cpu {
 			case 0xb5:
 			case 0xb6:
 			case 0xb7:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.ora(opcode);
+				this.ora(opcode);
 				break;
 
 			case 0xf6:
@@ -1154,6 +1154,14 @@ export class Cpu {
 	protected rrc() {
 		this.a = rotateBitsRightU8(this.a, 1);
 		this.conditions.cy = (this.a & 0x80) != 0;
+	}
+
+	protected ora(opcode: u8) {
+		const reg = opcode & 0x07;
+		const answer = u16(this.a | this.getRegisterByNum(reg));
+
+		this.conditions.setAll(answer, u8(0));
+		this.a = u8(answer);
 	}
 
 	protected ori() {
