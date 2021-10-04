@@ -19,9 +19,9 @@ export class Memory {
 	/**
 	 * Load a whole buffer into memory, starting at `offset`.
 	 * @param buffer - The buffer to load into memory. Can be of any array-like type.
-	 * @param offset - The offset from where to start writing the buffer into memory.
+	 * @param [offset = 0] - The offset from where to start writing the buffer into memory.
 	 */
-	public load(buffer: ArrayLike<number>, offset: number) {
+	public load(buffer: ArrayLike<number>, offset: number = 0) {
 		for (let address = 0; address < buffer.length; address++) {
 			if (offset + address >= Memory.MEMORY_SIZE) throw new Memory.NotEnoughMemoryError();
 
