@@ -36,6 +36,8 @@ or you can directly add it to your website via [unpkg](https://unpkg.com/):
 
 ## Usage
 
+> If this project gains more attention I'll add some documentation!
+
 ```typescript
 import { Cpu, Memory, Device } from 'eighty-eighty-js';
 import { promises as fs } from 'fs';
