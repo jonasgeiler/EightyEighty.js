@@ -43,7 +43,7 @@ or you can directly add it to your website via [unpkg](https://unpkg.com/):
 
 > If this project gains more attention I'll add some documentation!
 
-You'll probably need to install `typed-numbers` too!
+You'll probably need to install [`typed-numbers`](https://github.com/Skayo/TypedNumbers) too!
 
 ```typescript
 import { Cpu, Memory, Device } from 'eighty-eighty-js';
