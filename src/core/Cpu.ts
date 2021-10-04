@@ -1259,7 +1259,6 @@ export class Cpu {
 			const duration = Date.now() - this.stepZero;
 			const delay = Cpu.STEP_TIME - duration;
 
-			console.log(`CPU: sleep ${delay}ms`);
 			await new Promise(resolve => setTimeout(resolve, delay)); // Delay
 
 			this.stepZero = this.stepZero + Cpu.STEP_TIME;
