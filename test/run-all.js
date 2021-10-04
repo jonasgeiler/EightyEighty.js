@@ -76,12 +76,12 @@ async function runTest(filename, successfulExitStr) {
 }
 
 (async () => {
-	await runTest('8080PRE.COM', '8080 Preliminary tests complete');
-	await runTest('TST8080.COM', 'CPU IS OPERATIONAL');
-	await runTest('CPUTEST.COM', 'CPU TESTS OK');
-	await runTest('CPUDIAG.COM', 'CPU IS OPERATIONAL');
-	await runTest('8080EXM.COM', 'Tests complete');
-	await runTest('8080EXER.COM', 'Tests complete');
+	await runTest('8080PRE.bin', '8080 Preliminary tests complete');
+	await runTest('TST8080.bin', 'CPU IS OPERATIONAL');
+	await runTest('CPUTEST.bin', 'CPU TESTS OK');
+	await runTest('CPUDIAG.bin', 'CPU IS OPERATIONAL');
+	await runTest('8080EXM.bin', 'Tests complete');
+	await runTest('8080EXER.bin', 'Tests complete');
 
 	console.log('>>> ALL TESTS SUCCESSFUL!');
 	process.exit(0);

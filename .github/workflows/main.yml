@@ -3,6 +3,7 @@ on: [ push, pull_request ]
 
 jobs:
     test:
+        name: Test with Node v${{ matrix.node-version }}
         runs-on: ubuntu-latest
         strategy:
             matrix:
