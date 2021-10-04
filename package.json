@@ -38,7 +38,7 @@
 		"intel-8080"
 	],
 	"dependencies": {
-		"typed-numbers": "^1.0.1"
+		"typed-numbers": "^1.0.2"
 	},
 	"devDependencies": {
 		"microbundle": "^0.13.3"
