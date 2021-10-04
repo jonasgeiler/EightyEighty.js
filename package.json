@@ -12,6 +12,7 @@
 	"main": "./dist/eighty-eighty.js",
 	"module": "./dist/eighty-eighty.module.js",
 	"unpkg": "./dist/eighty-eighty.umd.js",
+	"types": "./dist/index.d.ts",
 	"files": [
 		"dist",
 		"src"
