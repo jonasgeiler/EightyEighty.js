@@ -1,6 +1,11 @@
 <h1 align="center">EightyEighty.js</h1>
 <p align="center">A nice little Intel 8080 emulator for Node.js and Browser!</p>
 <p align="center">
+  <a href="https://npmjs.com/package/eighty-eighty-js"><img src="https://img.shields.io/npm/v/eighty-eighty-js?style=for-the-badge" alt="NPM VERSION"></a>
+  <a href="https://npmjs.com/package/eighty-eighty-js"><img src="https://img.shields.io/npm/dt/eighty-eighty-js?style=for-the-badge" alt="NPM DOWNLOADS"></a>
+  <a href="https://npmjs.com/package/eighty-eighty-js"><img src="https://img.shields.io/librariesio/release/npm/eighty-eighty-js?style=for-the-badge" alt="DEPENDENCIES"></a>
+</p>
+<p align="center">
   <a href="#about">About</a> •
   <a href="#installation">Installation</a> •
   <a href="#usage">Usage</a> •
