@@ -28,8 +28,11 @@ export class Cpu {
 	/** Whether the CPU is halted. */
 	public halted = false;
 
-	/** TODO: Description */
+	/** Whether Flip-Flop instructions are interrupted. */
 	public intEnabled = false;
+
+	/** Whether debugging is enabled. */
+	public debugEnabled = false;
 
 	/** Device that handles input/output operations. */
 	public device: Device;
@@ -46,10 +49,12 @@ export class Cpu {
 	 * Constructor.
 	 * @param mem - An instance of the Memory class, with the program already loaded in.
 	 * @param device - A class that implements Device.
+	 * @param [debugEnabled = false] - Enable debugging.
 	 */
-	constructor(mem: Memory, device: Device) {
+	constructor(mem: Memory, device: Device, debugEnabled: boolean = false) {
 		this.mem = mem;
 		this.device = device;
+		this.debugEnabled = debugEnabled;
 	}
 
 	public next() {
@@ -57,7 +62,7 @@ export class Cpu {
 
 		const opcode = this.getNextByte();
 
-		Debug.printOperation(opcode, this);
+		if (this.debugEnabled) Debug.printOperation(opcode, this);
 
 		let extraCycles = 0;
 		switch (opcode) {

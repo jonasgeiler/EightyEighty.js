@@ -1,5 +1,8 @@
 import { u8 } from 'typed-numbers';
 
+/**
+ * TODO: Description
+ */
 export interface Device {
 
 	/**
