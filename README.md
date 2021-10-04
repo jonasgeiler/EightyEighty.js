@@ -43,9 +43,12 @@ or you can directly add it to your website via [unpkg](https://unpkg.com/):
 
 > If this project gains more attention I'll add some documentation!
 
+You'll probably need to install `typed-numbers` too!
+
 ```typescript
 import { Cpu, Memory, Device } from 'eighty-eighty-js';
 import { promises as fs } from 'fs';
+import { u8 } from 'typed-numbers';
 
 // Read ROM
 const programBuffer = await fs.readFile('./example-rom.bin');
@@ -58,12 +61,12 @@ mem.load(programBuffer, 0x100);
 
 // Device that handles inputs and outputs
 const device: Device = {
-	input(port) {
+	input(port: u8) {
 		console.log('INPUT', port);
-		return 0;
+		return u8(0);
 	},
 
-	output(port, byte) {
+	output(port: u8, byte: u8) {
 		console.log('OUTPUT', port, byte);
 	},
 };
