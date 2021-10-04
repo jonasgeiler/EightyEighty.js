@@ -1,7 +1,7 @@
 const { readFile } = require('fs/promises');
 const { Cpu, Memory } = require('..');
-const { u16 } = require('typed-numbers');
 
+// Set to true to enable debug (prints all operations -> slow!)
 const DEBUG = false;
 
 const dummyDevice = {
@@ -15,7 +15,7 @@ const dummyDevice = {
 	},
 };
 
-async function runTest(filename, successfulExitStr) {
+async function runTest(filename, successfulTestStr) {
 	const programFile = `${__dirname}/roms/${filename}`;
 	const programBuffer = await readFile(programFile);
 
@@ -27,7 +27,7 @@ async function runTest(filename, successfulExitStr) {
 	cpu.reg.pc = 0x100; // Because tests used the pseudo instruction ORG 0x0100
 
 	let output = '';
-	mainLoop: while (true) {
+	while (true) {
 		if (cpu.halted) break;
 
 		cpu.next();
@@ -65,7 +65,7 @@ async function runTest(filename, successfulExitStr) {
 		}
 	}
 
-	if (output.trim().endsWith(successfulExitStr)) {
+	if (output.trim().endsWith(successfulTestStr)) {
 		console.log(`>>> TEST SUCCESSFUL: ${filename}`);
 		return true;
 	}

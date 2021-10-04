@@ -3,9 +3,8 @@
 <p align="center">
   <a href="#about">About</a> •
   <a href="#installation">Installation</a> •
-  <a href="#how-it-works">How it works</a> •
-  <a href="#faqs">FAQs</a> •
-  <a href="#credits">Credits</a> •
+  <a href="#usage">Usage</a> •
+  <a href="#resources">Resources</a> •
   <a href="#license">License</a>
 </p>
 
