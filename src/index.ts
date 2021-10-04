@@ -1,7 +1,7 @@
 import { Command, flags } from '@oclif/command';
 import { promises as fs } from 'fs';
 import * as process from 'process';
-import { u16 } from 'typed-numbers';
+import { u16, u8 } from 'typed-numbers';
 import { Cpu, Memory } from './core';
 
 class EightyEightyJs extends Command {
@@ -37,7 +37,15 @@ class EightyEightyJs extends Command {
 		const mem = new Memory();
 		mem.load(programBuffer, 0x100);
 
-		const cpu = new Cpu(mem);
+		const cpu = new Cpu(mem, {
+			input(port: u8): u8 {
+				console.log('input', port);
+				return u8(0);
+			},
+			output(port: u8, byte: u8) {
+				console.log('output', port, byte);
+			},
+		});
 		cpu.reg.pc = u16(0x0100);
 
 		mainLoop: while (true) {

@@ -1,1 +1,1 @@
-export { Machine } from './Machine';
+export { Device } from './Device';

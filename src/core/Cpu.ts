@@ -1,6 +1,6 @@
 import { u16, u8 } from 'typed-numbers';
-import { Bit, Opcode } from '../helpers';
-import { toHexStr } from '../utils';
+import { Bit, Debug, Opcode } from '../helpers';
+import { Device } from '../types';
 import { Memory } from './Memory';
 import { Register } from './Register';
 
@@ -31,6 +31,9 @@ export class Cpu {
 	/** TODO: Description */
 	public intEnabled = false;
 
+	/** Device that handles input/output operations. */
+	public device: Device;
+
 
 	/** Keeps track of the amount CPU cycles of the current step. */
 	protected stepCycles = 0;
@@ -42,9 +45,11 @@ export class Cpu {
 	/**
 	 * Constructor.
 	 * @param mem - An instance of the Memory class, with the program already loaded in.
+	 * @param device - A class that implements Device.
 	 */
-	constructor(mem: Memory) {
+	constructor(mem: Memory, device: Device) {
 		this.mem = mem;
+		this.device = device;
 	}
 
 	public next() {
@@ -52,24 +57,7 @@ export class Cpu {
 
 		const opcode = this.getNextByte();
 
-		console.log(
-			`[${toHexStr(this.reg.pc - 1, 4)}]  ` +
-			`${Opcode.toString(opcode).padEnd(15, ' ')}` +
-			`(SP=${toHexStr(this.reg.sp, 4)} ` +
-			`A=${toHexStr(this.reg.a)} ` +
-			`F=${toHexStr(this.reg.f)} ` +
-			`B=${toHexStr(this.reg.b)} ` +
-			`C=${toHexStr(this.reg.c)} ` +
-			`D=${toHexStr(this.reg.d)} ` +
-			`E=${toHexStr(this.reg.e)} ` +
-			`H=${toHexStr(this.reg.h)} ` +
-			`L=${toHexStr(this.reg.l)} ` +
-			`FLAGS=${this.reg.getFlagS() ? 'S' : '.'}` +
-			`${this.reg.getFlagZ() ? 'Z' : '.'}` +
-			`${this.reg.getFlagA() ? 'A' : '.'}` +
-			`${this.reg.getFlagP() ? 'P' : '.'}` +
-			`${this.reg.getFlagC() ? 'C' : '.'})`,
-		);
+		Debug.printOperation(opcode, this);
 
 		let extraCycles = 0;
 		switch (opcode) {
@@ -1231,15 +1219,13 @@ export class Cpu {
 			 * I/O Instructions *
 			 ********************/
 
-			case 0xdb: {
-				console.log('input', this.getNextByte());
+			case 0xdb:
+				this.reg.a = this.device.input(this.getNextByte());
 				break;
-			}
 
-			case 0xd3: {
-				console.log('output', this.getNextByte());
+			case 0xd3:
+				this.device.output(this.getNextByte(), this.reg.a);
 				break;
-			}
 
 
 			/**************************
@@ -1392,7 +1378,7 @@ export class Cpu {
 			case 0xca: // JZ - Jump if Zero
 			case 0xcc: // CZ - Call if Zero
 			case 0xc8: // RZ - Return if Zero
-				return !this.reg.getFlagZ();
+				return this.reg.getFlagZ();
 
 			case 0xc2: // JNZ - Jump if Not Zero
 			case 0xc4: // CNZ - Call if Not Zero
@@ -1622,7 +1608,7 @@ export namespace Cpu {
 		public opcode: u8;
 
 		constructor(opcode: u8) {
-			super(`Unimplemented instruction: ${Opcode.toString(opcode)} (0x${toHexStr(opcode)})`);
+			super(`Unimplemented instruction: ${Opcode.toString(opcode)} (0x${Debug.toHexStr(opcode)})`);
 			this.opcode = opcode;
 		}
 	}
