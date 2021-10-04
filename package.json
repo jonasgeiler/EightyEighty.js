@@ -1,47 +1,39 @@
 {
-  "name": "i8080",
-  "description": "A simple Intel 8080 emulator written in JavaScript",
-  "version": "1.0.0",
-  "author": "Skayo (https://skayo.dev)",
-  "bin": {
-    "eightyeighty": "./bin/run"
-  },
-  "bugs": "https://github.com/Skayo/i8080/issues",
-  "dependencies": {
-    "@oclif/command": "^1.8.0",
-    "@oclif/config": "^1.17.0",
-    "@oclif/errors": "^1.3.5",
-    "@oclif/plugin-help": "^3.2.3",
-    "tslib": "^1.14.1",
-    "typed-numbers": "^0.0.1-experimental.1"
-  },
-  "devDependencies": {
-    "@oclif/dev-cli": "^1.26.0",
-    "@types/node": "^10.17.60",
-    "rimraf": "^3.0.2",
-    "ts-node": "^8.10.2",
-    "typescript": "^3.9.10"
-  },
-  "engines": {
-    "node": ">=8.0.0"
-  },
-  "files": [
-    "/bin",
-    "/dist"
-  ],
-  "homepage": "https://github.com/Skayo/i8080",
-  "keywords": [
-    "oclif"
-  ],
-  "license": "MIT",
-  "main": "dist/index.js",
-  "oclif": {
-    "bin": "i8080"
-  },
-  "repository": "Skayo/i8080",
-  "scripts": {
-    "prepack": "rimraf dist && tsc -b && oclif-dev readme",
-    "test": "echo NO TESTS",
-    "version": "oclif-dev readme && git add README.md"
-  }
+	"name": "eighty-eighty-js",
+	"description": "An Intel 8080 emulator written in JavaScript/TypeScript",
+	"version": "1.0.0",
+	"author": "Skayo (https://skayo.dev)",
+	"license": "MIT",
+	"repository": "Skayo/i8080",
+	"homepage": "https://github.com/Skayo/i8080",
+	"bugs": "https://github.com/Skayo/i8080/issues",
+	"source": "src/index.ts",
+	"exports": "./dist/eighty-eighty.modern.js",
+	"main": "./dist/eighty-eighty.js",
+	"module": "./dist/eighty-eighty.module.js",
+	"unpkg": "./dist/eighty-eighty.umd.js",
+	"files": [
+		"dist",
+		"src"
+	],
+	"scripts": {
+		"build": "microbundle build",
+		"test": "microbundle build && node test/run-all.js",
+		"dev": "microbundle watch --no-compress"
+	},
+	"engines": {
+		"node": ">=8.0.0"
+	},
+	"keywords": [
+		"emulator",
+		"i8080",
+		"intel",
+		"cpu"
+	],
+	"dependencies": {
+		"typed-numbers": "^0.0.1-experimental.1"
+	},
+	"devDependencies": {
+		"microbundle": "^0.13.3"
+	}
 }

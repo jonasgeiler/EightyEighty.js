@@ -1,6 +1,9 @@
 import { u8 } from 'typed-numbers';
 
-export interface Machine {
+/**
+ * TODO: Description
+ */
+export interface Device {
 
 	/**
 	 * Handle input

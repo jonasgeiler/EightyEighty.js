@@ -1,513 +1,1198 @@
 import { u16, u8 } from 'typed-numbers';
-import { Machine } from '../types';
-import { getOpcodeCpuCycles, getOpcodeLength, getOpcodeName, rotateBitsLeftU8, rotateBitsRightU8, toHexStr } from '../utils';
-import { ConditionCodes } from './ConditionCodes';
+import { Bit, Debug, Opcode } from '../helpers';
+import { Device } from '../types';
 import { Memory } from './Memory';
+import { Register } from './Register';
 
+/**
+ * Represents the Intel 8080 CPU.
+ */
 export class Cpu {
 
-	protected a: u8 = u8(0);
-	protected b: u8 = u8(0);
-	protected c: u8 = u8(0);
-	protected d: u8 = u8(0);
-	protected e: u8 = u8(0);
-	protected h: u8 = u8(0);
-	protected l: u8 = u8(0);
+	/** Clock Frequency. */
+	public static readonly CLOCK_FREQUENCY = 2_000_000;
 
-	protected sp: u16 = u16(0);
-	public pc: u16 = u16(0);
+	/** Time a single step takes in milliseconds. */
+	public static readonly STEP_TIME = 16;
 
-	protected memory: Memory = new Memory();
+	/** Amount of CPU cycles a single step takes. */
+	public static readonly STEP_CYCLES = (Cpu.STEP_TIME / (1000 / Cpu.CLOCK_FREQUENCY));
 
-	protected conditions: ConditionCodes = new ConditionCodes();
 
-	protected intEnable: boolean = false;
+	/** CPU Register. */
+	public reg = new Register();
 
-	public loadProgram(program: ArrayLike<number>, offset?: number) {
-		this.memory.load(program, offset);
+	/** CPU Memory. */
+	public mem: Memory;
+
+	/** Whether the CPU is halted. */
+	public halted = false;
+
+	/** Whether Flip-Flop instructions are interrupted. */
+	public intEnabled = false;
+
+	/** Whether debugging is enabled. */
+	public debugEnabled = false;
+
+	/** Device that handles input/output operations. */
+	public device: Device;
+
+
+	/** Keeps track of the amount CPU cycles of the current step. */
+	protected stepCycles = 0;
+
+	/** Keeps track of the start time of a step. */
+	protected stepZero = Date.now();
+
+
+	/**
+	 * Constructor.
+	 * @param mem - An instance of the Memory class, with the program already loaded in.
+	 * @param device - A class that implements Device.
+	 * @param [debugEnabled = false] - Enable debugging.
+	 */
+	constructor(mem: Memory, device: Device, debugEnabled: boolean = false) {
+		this.mem = mem;
+		this.device = device;
+		this.debugEnabled = debugEnabled;
 	}
 
-	public emulate(machine: Machine) {
-		const opcode = this.memory.read(this.pc);
+	public next() {
+		if (this.halted) return 0;
 
-		machine;
+		const opcode = this.getNextByte();
 
-		console.log(`[${toHexStr(this.pc, 4)}]  ` +
-		            `${toHexStr(opcode)} ` +
-		            (getOpcodeLength(opcode) >= 2 ? toHexStr(this.memory.read(u16(this.pc + 1))) : '  ') +
-		            ' ' +
-		            (getOpcodeLength(opcode) == 3 ? toHexStr(this.memory.read(u16(this.pc + 2))) : '  ') +
-		            `\t${getOpcodeName(opcode).padEnd(8, ' ')}\t` +
-		            `(Flags: ${this.conditions.toString()}, ` +
-		            `A: ${toHexStr(this.a)}, ` +
-		            `B: ${toHexStr(this.b)}, ` +
-		            `C: ${toHexStr(this.c)}, ` +
-		            `D: ${toHexStr(this.d)}, ` +
-		            `E: ${toHexStr(this.e)}, ` +
-		            `H: ${toHexStr(this.h)}, ` +
-		            `L: ${toHexStr(this.l)}, ` +
-		            `SP: ${toHexStr(this.sp, 4)})`);
+		if (this.debugEnabled) Debug.printOperation(opcode, this);
 
-		let jumped = false;
+		let extraCycles = 0;
 		switch (opcode) {
+
+			/**********************
+			 * NOP - No Operation *
+			 **********************/
+
 			case 0x00:
 			case 0x08:
+			case 0x10:
+			case 0x18:
 			case 0x20:
 			case 0x28:
 			case 0x30:
 			case 0x38:
 				break;
 
-			case 0x76:
-				console.log('Exiting...');
-				process.exit(0);
+
+			/**************************
+			 * Carry Bit Instructions *
+			 **************************/
+
+			case 0x3f:
+				this.reg.setFlagC(!this.reg.getFlagC());
+				break;
+
+			case 0x37:
+				this.reg.setFlagC(true);
 				break;
 
 
-			/***********************
-			 * DATA TRANSFER GROUP *
-			 ***********************/
-
-			case 0x01:
-			case 0x11:
-			case 0x21:
-			case 0x31:
-				this.lxi(opcode);
-				break;
-
-			case 0x02:
-			case 0x12:
-				this.stax(opcode);
-				break;
-
-			case 0x06:
-			case 0x0e:
-			case 0x16:
-			case 0x1e:
-			case 0x26:
-			case 0x2e:
-			case 0x36:
-			case 0x3e:
-				this.mvi(opcode);
-				break;
-
-			case 0x0a:
-			case 0x1a:
-				this.ldax(opcode);
-				break;
-
-			case 0x40:
-			case 0x41:
-			case 0x42:
-			case 0x43:
-			case 0x44:
-			case 0x45:
-			case 0x46:
-			case 0x47:
-			case 0x48:
-			case 0x49:
-			case 0x4a:
-			case 0x4b:
-			case 0x4c:
-			case 0x4d:
-			case 0x4e:
-			case 0x4f:
-			case 0x50:
-			case 0x51:
-			case 0x52:
-			case 0x53:
-			case 0x54:
-			case 0x55:
-			case 0x56:
-			case 0x57:
-			case 0x58:
-			case 0x59:
-			case 0x5a:
-			case 0x5b:
-			case 0x5c:
-			case 0x5d:
-			case 0x5e:
-			case 0x5f:
-			case 0x60:
-			case 0x61:
-			case 0x62:
-			case 0x63:
-			case 0x64:
-			case 0x65:
-			case 0x66:
-			case 0x67:
-			case 0x68:
-			case 0x69:
-			case 0x6a:
-			case 0x6b:
-			case 0x6c:
-			case 0x6d:
-			case 0x6e:
-			case 0x6f:
-			case 0x70:
-			case 0x71:
-			case 0x72:
-			case 0x73:
-			case 0x74:
-			case 0x75:
-			case 0x77:
-			case 0x78:
-			case 0x79:
-			case 0x7a:
-			case 0x7b:
-			case 0x7c:
-			case 0x7d:
-			case 0x7e:
-			case 0x7f:
-				this.mov(opcode);
-				break;
-
-			case 0xe3:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.xthl();
-				break;
-
-			case 0xe9:
-				throw new Cpu.UnimplementedInstructionError(opcode); // jumped = this.pchl();
-				break;
-
-			case 0xeb:
-				this.xchg();
-				break;
-
-			case 0xee:
-				this.xri();
-				break;
-
-			case 0xf9:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.sphl();
-				break;
-
-
-			/********************
-			 * ARITHMETIC GROUP *
-			 ********************/
-
-			case 0x03:
-			case 0x13:
-			case 0x23:
-			case 0x33:
-				this.inx(opcode);
-				break;
+			/**************************************
+			 * INR - Increment Register or Memory *
+			 **************************************/
 
 			case 0x04:
-			case 0x0c:
-			case 0x14:
-			case 0x1c:
-			case 0x24:
-			case 0x2c:
-			case 0x34:
-			case 0x3c:
-				this.inr(opcode);
+				this.reg.b = this.inr(this.reg.b);
 				break;
+
+			case 0x0c:
+				this.reg.c = this.inr(this.reg.c);
+				break;
+
+			case 0x14:
+				this.reg.d = this.inr(this.reg.d);
+				break;
+
+			case 0x1c:
+				this.reg.e = this.inr(this.reg.e);
+				break;
+
+			case 0x24:
+				this.reg.h = this.inr(this.reg.h);
+				break;
+
+			case 0x2c:
+				this.reg.l = this.inr(this.reg.l);
+				break;
+
+			case 0x34: {
+				const regM = this.getM();
+				const result = this.inr(regM);
+				this.setM(result);
+				break;
+			}
+
+			case 0x3c:
+				this.reg.a = this.inr(this.reg.a);
+				break;
+
+
+			/**************************************
+			 * DCR - Decrement Register or Memory *
+			 **************************************/
 
 			case 0x05:
+				this.reg.b = this.dcr(this.reg.b);
+				break;
+
 			case 0x0d:
+				this.reg.c = this.dcr(this.reg.c);
+				break;
+
 			case 0x15:
+				this.reg.d = this.dcr(this.reg.d);
+				break;
+
 			case 0x1d:
+				this.reg.e = this.dcr(this.reg.e);
+				break;
+
 			case 0x25:
+				this.reg.h = this.dcr(this.reg.h);
+				break;
+
 			case 0x2d:
-			case 0x35:
+				this.reg.l = this.dcr(this.reg.l);
+				break;
+
+			case 0x35: {
+				const regM = this.getM();
+				const result = this.dcr(regM);
+				this.setM(result);
+				break;
+			}
+
 			case 0x3d:
-				this.dcr(opcode);
+				this.reg.a = this.dcr(this.reg.a);
 				break;
 
-			case 0x09:
-			case 0x19:
-			case 0x29:
-			case 0x39:
-				this.dad(opcode);
+
+			/********************************
+			 * CMA - Complement Accumulator *
+			 ********************************/
+
+			case 0x2f:
+				this.reg.a = u8(~this.reg.a);
 				break;
 
-			case 0x0b:
-			case 0x1b:
-			case 0x2b:
-			case 0x3b:
-				this.dcx(opcode);
-				break;
+
+			/************************************
+			 * DAA - Decimal Adjust Accumulator *
+			 ************************************/
 
 			case 0x27:
 				this.daa();
 				break;
 
-			case 0x80:
-			case 0x81:
-			case 0x82:
-			case 0x83:
-			case 0x84:
-			case 0x85:
-			case 0x86:
-			case 0x87:
-				this.add(opcode);
+
+			/***************************
+			 * MOV - Move Instructions *
+			 ***************************/
+
+			case 0x40:
+				// this.reg.b = this.reg.b;
 				break;
+
+			case 0x41:
+				this.reg.b = this.reg.c;
+				break;
+
+			case 0x42:
+				this.reg.b = this.reg.d;
+				break;
+
+			case 0x43:
+				this.reg.b = this.reg.e;
+				break;
+
+			case 0x44:
+				this.reg.b = this.reg.h;
+				break;
+
+			case 0x45:
+				this.reg.b = this.reg.l;
+				break;
+
+			case 0x46:
+				this.reg.b = this.getM();
+				break;
+
+			case 0x47:
+				this.reg.b = this.reg.a;
+				break;
+
+			case 0x48:
+				this.reg.c = this.reg.b;
+				break;
+
+			case 0x49:
+				// this.reg.c = this.reg.c;
+				break;
+
+			case 0x4a:
+				this.reg.c = this.reg.d;
+				break;
+
+			case 0x4b:
+				this.reg.c = this.reg.e;
+				break;
+
+			case 0x4c:
+				this.reg.c = this.reg.h;
+				break;
+
+			case 0x4d:
+				this.reg.c = this.reg.l;
+				break;
+
+			case 0x4e:
+				this.reg.c = this.getM();
+				break;
+
+			case 0x4f:
+				this.reg.c = this.reg.a;
+				break;
+
+			case 0x50:
+				this.reg.d = this.reg.b;
+				break;
+
+			case 0x51:
+				this.reg.d = this.reg.c;
+				break;
+
+			case 0x52:
+				// this.reg.d = this.reg.d;
+				break;
+
+			case 0x53:
+				this.reg.d = this.reg.e;
+				break;
+
+			case 0x54:
+				this.reg.d = this.reg.h;
+				break;
+
+			case 0x55:
+				this.reg.d = this.reg.l;
+				break;
+
+			case 0x56:
+				this.reg.d = this.getM();
+				break;
+
+			case 0x57:
+				this.reg.d = this.reg.a;
+				break;
+
+			case 0x58:
+				this.reg.e = this.reg.b;
+				break;
+
+			case 0x59:
+				this.reg.e = this.reg.c;
+				break;
+
+			case 0x5a:
+				this.reg.e = this.reg.d;
+				break;
+
+			case 0x5b:
+				// this.reg.e = this.reg.e;
+				break;
+
+			case 0x5c:
+				this.reg.e = this.reg.h;
+				break;
+
+			case 0x5d:
+				this.reg.e = this.reg.l;
+				break;
+
+			case 0x5e:
+				this.reg.e = this.getM();
+				break;
+
+			case 0x5f:
+				this.reg.e = this.reg.a;
+				break;
+
+			case 0x60:
+				this.reg.h = this.reg.b;
+				break;
+
+			case 0x61:
+				this.reg.h = this.reg.c;
+				break;
+
+			case 0x62:
+				this.reg.h = this.reg.d;
+				break;
+
+			case 0x63:
+				this.reg.h = this.reg.e;
+				break;
+
+			case 0x64:
+				// this.reg.h = this.reg.h;
+				break;
+
+			case 0x65:
+				this.reg.h = this.reg.l;
+				break;
+
+			case 0x66:
+				this.reg.h = this.getM();
+				break;
+
+			case 0x67:
+				this.reg.h = this.reg.a;
+				break;
+
+			case 0x68:
+				this.reg.l = this.reg.b;
+				break;
+
+			case 0x69:
+				this.reg.l = this.reg.c;
+				break;
+
+			case 0x6a:
+				this.reg.l = this.reg.d;
+				break;
+
+			case 0x6b:
+				this.reg.l = this.reg.e;
+				break;
+
+			case 0x6c:
+				this.reg.l = this.reg.h;
+				break;
+
+			case 0x6d:
+				// this.reg.l = this.reg.l;
+				break;
+
+			case 0x6e:
+				this.reg.l = this.getM();
+				break;
+
+			case 0x6f:
+				this.reg.l = this.reg.a;
+				break;
+
+			case 0x70:
+				this.setM(this.reg.b);
+				break;
+
+			case 0x71:
+				this.setM(this.reg.c);
+				break;
+
+			case 0x72:
+				this.setM(this.reg.d);
+				break;
+
+			case 0x73:
+				this.setM(this.reg.e);
+				break;
+
+			case 0x74:
+				this.setM(this.reg.h);
+				break;
+
+			case 0x75:
+				this.setM(this.reg.l);
+				break;
+
+			case 0x77:
+				this.setM(this.reg.a);
+				break;
+
+			case 0x78:
+				this.reg.a = this.reg.b;
+				break;
+
+			case 0x79:
+				this.reg.a = this.reg.c;
+				break;
+
+			case 0x7a:
+				this.reg.a = this.reg.d;
+				break;
+
+			case 0x7b:
+				this.reg.a = this.reg.e;
+				break;
+
+			case 0x7c:
+				this.reg.a = this.reg.h;
+				break;
+
+			case 0x7d:
+				this.reg.a = this.reg.l;
+				break;
+
+			case 0x7e:
+				this.reg.a = this.getM();
+				break;
+
+			case 0x7f:
+				// this.reg.a = this.reg.a;
+				break;
+
+
+			/****************************
+			 * STAX - Store Accumulator *
+			 ****************************/
+
+			case 0x02:
+				this.mem.set(this.reg.getBC(), this.reg.a);
+				break;
+
+			case 0x12:
+				this.mem.set(this.reg.getDE(), this.reg.a);
+				break;
+
+
+			/***************************
+			 * LDAX - Load Accumulator *
+			 ***************************/
+
+			case 0x0a:
+				this.reg.a = this.mem.get(this.reg.getBC());
+				break;
+
+			case 0x1a:
+				this.reg.a = this.mem.get(this.reg.getDE());
+				break;
+
+
+			/***********************************************
+			 * ADD - Add Register or Memory to Accumulator *
+			 ***********************************************/
+
+			case 0x80:
+				this.add(this.reg.b);
+				break;
+
+			case 0x81:
+				this.add(this.reg.c);
+				break;
+
+			case 0x82:
+				this.add(this.reg.d);
+				break;
+
+			case 0x83:
+				this.add(this.reg.e);
+				break;
+
+			case 0x84:
+				this.add(this.reg.h);
+				break;
+
+			case 0x85:
+				this.add(this.reg.l);
+				break;
+
+			case 0x86:
+				this.add(this.getM());
+				break;
+
+			case 0x87:
+				this.add(this.reg.a);
+				break;
+
+
+			/**********************************************************
+			 * ADC - Add Register or Memory to Accumulator with Carry *
+			 **********************************************************/
 
 			case 0x88:
-			case 0x89:
-			case 0x8a:
-			case 0x8b:
-			case 0x8c:
-			case 0x8d:
-			case 0x8e:
-			case 0x8f:
-				this.adc(opcode);
+				this.adc(this.reg.b);
 				break;
+
+			case 0x89:
+				this.adc(this.reg.c);
+				break;
+
+			case 0x8a:
+				this.adc(this.reg.d);
+				break;
+
+			case 0x8b:
+				this.adc(this.reg.e);
+				break;
+
+			case 0x8c:
+				this.adc(this.reg.h);
+				break;
+
+			case 0x8d:
+				this.adc(this.reg.l);
+				break;
+
+			case 0x8e:
+				this.adc(this.getM());
+				break;
+
+			case 0x8f:
+				this.adc(this.reg.a);
+				break;
+
+
+			/******************************************************
+			 * SUB - Subtract Register or Memory from Accumulator *
+			 ******************************************************/
 
 			case 0x90:
-			case 0x91:
-			case 0x92:
-			case 0x93:
-			case 0x94:
-			case 0x95:
-			case 0x96:
-			case 0x97:
-				this.sub(opcode);
+				this.sub(this.reg.b);
 				break;
+
+			case 0x91:
+				this.sub(this.reg.c);
+				break;
+
+			case 0x92:
+				this.sub(this.reg.d);
+				break;
+
+			case 0x93:
+				this.sub(this.reg.e);
+				break;
+
+			case 0x94:
+				this.sub(this.reg.h);
+				break;
+
+			case 0x95:
+				this.sub(this.reg.l);
+				break;
+
+			case 0x96:
+				this.sub(this.getM());
+				break;
+
+			case 0x97:
+				this.sub(this.reg.a);
+				break;
+
+
+			/******************************************************************
+			 * SBB - Subtract Register or Memory from Accumulator with Borrow *
+			 ******************************************************************/
 
 			case 0x98:
+				this.sbb(this.reg.b);
+				break;
+
 			case 0x99:
+				this.sbb(this.reg.c);
+				break;
+
 			case 0x9a:
+				this.sbb(this.reg.d);
+				break;
+
 			case 0x9b:
+				this.sbb(this.reg.e);
+				break;
+
 			case 0x9c:
+				this.sbb(this.reg.h);
+				break;
+
 			case 0x9d:
+				this.sbb(this.reg.l);
+				break;
+
 			case 0x9e:
+				this.sbb(this.getM());
+				break;
+
 			case 0x9f:
-				this.sbb(opcode);
-				break;
-
-			case 0xb8:
-			case 0xb9:
-			case 0xba:
-			case 0xbb:
-			case 0xbc:
-			case 0xbd:
-			case 0xbe:
-			case 0xbf:
-				this.cmp(opcode);
-				break;
-
-			case 0xc6:
-				this.adi();
-				break;
-
-			case 0xce:
-				this.aci();
-				break;
-
-			case 0xd6:
-				this.sui();
-				break;
-
-			case 0xde:
-				this.sbi();
+				this.sbb(this.reg.a);
 				break;
 
 
-			/****************
-			 * BRANCH GROUP *
-			 ****************/
-
-			case 0xc2:
-				jumped = this.jnz();
-				break;
-
-			case 0xc3:
-				jumped = this.jmp();
-				break;
-
-			case 0xca:
-				jumped = this.jz();
-				break;
-
-			case 0xd2:
-				jumped = this.jnc();
-				break;
-
-			case 0xda:
-				jumped = this.jc();
-				break;
-
-			case 0xe2:
-				jumped = this.jpo();
-				break;
-
-			case 0xea:
-				jumped = this.jpe();
-				break;
-
-			case 0xf2:
-				jumped = this.jp();
-				break;
-
-			case 0xfa:
-				jumped = this.jm();
-				break;
-
-			case 0xdc:
-				jumped = this.cc();
-				break;
-
-			case 0xcc:
-				jumped = this.cz();
-				break;
-
-			case 0xd4:
-				jumped = this.cnc();
-				break;
-
-			case 0xec:
-				jumped = this.cpe();
-				break;
-
-			case 0xe4:
-				jumped = this.cpo();
-				break;
-
-			case 0xfc:
-				jumped = this.cm();
-				break;
-
-			case 0xf4:
-				jumped = this.cp();
-				break;
-
-			case 0xc4:
-				jumped = this.cnz();
-				break;
-
-			case 0xd8:
-				jumped = this.rc();
-				break;
-
-			case 0xd0:
-				jumped = this.rnc();
-				break;
-
-			case 0xc8:
-				jumped = this.rz();
-				break;
-
-			case 0xc0:
-				jumped = this.rnz();
-				break;
-
-			case 0xf8:
-				jumped = this.rm();
-				break;
-
-			case 0xf0:
-				jumped = this.rp();
-				break;
-
-			case 0xe8:
-				jumped = this.rpe();
-				break;
-
-			case 0xe0:
-				jumped = this.rpo();
-				break;
-
-
-			/*****************
-			 * LOGICAL GROUP *
-			 *****************/
-
-			case 0xe6:
-				this.ani();
-				break;
+			/*********************************************************
+			 * ANA - Logical AND Register or Memory with Accumulator *
+			 *********************************************************/
 
 			case 0xa0:
-			case 0xa1:
-			case 0xa2:
-			case 0xa3:
-			case 0xa4:
-			case 0xa5:
-			case 0xa6:
-			case 0xa7:
-				this.ana(opcode);
+				this.ana(this.reg.b);
 				break;
+
+			case 0xa1:
+				this.ana(this.reg.c);
+				break;
+
+			case 0xa2:
+				this.ana(this.reg.d);
+				break;
+
+			case 0xa3:
+				this.ana(this.reg.e);
+				break;
+
+			case 0xa4:
+				this.ana(this.reg.h);
+				break;
+
+			case 0xa5:
+				this.ana(this.reg.l);
+				break;
+
+			case 0xa6:
+				this.ana(this.getM());
+				break;
+
+			case 0xa7:
+				this.ana(this.reg.a);
+				break;
+
+
+			/*******************************************************************************************
+			 * XRA - Logical XOR (exclusive-or) Register or Memory with Accumulator (Zero Accumulator) *
+			 *******************************************************************************************/
+
+			case 0xa8:
+				this.xra(this.reg.b);
+				break;
+
+			case 0xa9:
+				this.xra(this.reg.c);
+				break;
+
+			case 0xaa:
+				this.xra(this.reg.d);
+				break;
+
+			case 0xab:
+				this.xra(this.reg.e);
+				break;
+
+			case 0xac:
+				this.xra(this.reg.h);
+				break;
+
+			case 0xad:
+				this.xra(this.reg.l);
+				break;
+
+			case 0xae:
+				this.xra(this.getM());
+				break;
+
+			case 0xaf:
+				this.xra(this.reg.a);
+				break;
+
+
+			/********************************************************
+			 * ORA - Logical OR Register or Memory with Accumulator *
+			 ********************************************************/
+
+			case 0xb0:
+				this.ora(this.reg.b);
+				break;
+
+			case 0xb1:
+				this.ora(this.reg.c);
+				break;
+
+			case 0xb2:
+				this.ora(this.reg.d);
+				break;
+
+			case 0xb3:
+				this.ora(this.reg.e);
+				break;
+
+			case 0xb4:
+				this.ora(this.reg.h);
+				break;
+
+			case 0xb5:
+				this.ora(this.reg.l);
+				break;
+
+			case 0xb6:
+				this.ora(this.getM());
+				break;
+
+			case 0xb7:
+				this.ora(this.reg.a);
+				break;
+
+
+			/*****************************************************
+			 * CMP - Compare Register or Memory with Accumulator *
+			 *****************************************************/
+
+			case 0xb8:
+				this.cmp(this.reg.b);
+				break;
+
+			case 0xb9:
+				this.cmp(this.reg.c);
+				break;
+
+			case 0xba:
+				this.cmp(this.reg.d);
+				break;
+
+			case 0xbb:
+				this.cmp(this.reg.e);
+				break;
+
+			case 0xbc:
+				this.cmp(this.reg.h);
+				break;
+
+			case 0xbd:
+				this.cmp(this.reg.l);
+				break;
+
+			case 0xbe:
+				this.cmp(this.getM());
+				break;
+
+			case 0xbf:
+				this.cmp(this.reg.a);
+				break;
+
+
+			/*********************************
+			 * RLC - Rotate Accumulator Left *
+			 *********************************/
 
 			case 0x07:
 				this.rlc();
 				break;
 
+
+			/*********************************
+			 * RRC - Rotate Accumulator Right *
+			 *********************************/
+
 			case 0x0f:
 				this.rrc();
 				break;
+
+
+			/***********************************************
+			 * RAL - Rotate Accumulator Left Through Carry *
+			 ***********************************************/
 
 			case 0x17:
 				this.ral();
 				break;
 
+
+			/************************************************
+			 * RAR - Rotate Accumulator Right Through Carry *
+			 ************************************************/
+
 			case 0x1f:
 				this.rar();
 				break;
 
-			case 0xb0:
-			case 0xb1:
-			case 0xb2:
-			case 0xb3:
-			case 0xb4:
-			case 0xb5:
-			case 0xb6:
-			case 0xb7:
-				this.ora(opcode);
+
+			/*******************************
+			 * PUSH - Push Data Onto Stack *
+			 *******************************/
+
+			case 0xc5:
+				this.stackAdd(this.reg.getBC());
 				break;
+
+			case 0xd5:
+				this.stackAdd(this.reg.getDE());
+				break;
+
+			case 0xe5:
+				this.stackAdd(this.reg.getHL());
+				break;
+
+			case 0xf5:
+				this.stackAdd(this.reg.getAF());
+				break;
+
+
+			/****************************
+			 * POP - Pop Data Off Stack *
+			 ****************************/
+
+			case 0xc1:
+				this.reg.setBC(this.stackPop());
+				break;
+
+			case 0xd1:
+				this.reg.setDE(this.stackPop());
+				break;
+
+			case 0xe1:
+				this.reg.setHL(this.stackPop());
+				break;
+
+			case 0xf1:
+				this.reg.setAF(this.stackPop());
+				break;
+
+
+			/********************
+			 * DAD - Double Add *
+			 ********************/
+
+			case 0x09:
+				this.dad(this.reg.getBC());
+				break;
+
+			case 0x19:
+				this.dad(this.reg.getDE());
+				break;
+
+			case 0x29:
+				this.dad(this.reg.getHL());
+				break;
+
+			case 0x39:
+				this.dad(this.reg.sp);
+				break;
+
+
+			/*********************************
+			 * INX - Increment Register Pair *
+			 *********************************/
+
+			case 0x03:
+				this.reg.setBC(u16(this.reg.getBC() + 1));
+				break;
+
+			case 0x13:
+				this.reg.setDE(u16(this.reg.getDE() + 1));
+				break;
+
+			case 0x23:
+				this.reg.setHL(u16(this.reg.getHL() + 1));
+				break;
+
+			case 0x33:
+				this.reg.sp = u16(this.reg.sp + 1);
+				break;
+
+
+			/*********************************
+			 * DCX - Decrement Register Pair *
+			 *********************************/
+
+			case 0x0b:
+				this.reg.setBC(u16(this.reg.getBC() - 1));
+				break;
+
+			case 0x1b:
+				this.reg.setDE(u16(this.reg.getDE() - 1));
+				break;
+
+			case 0x2b:
+				this.reg.setHL(u16(this.reg.getHL() - 1));
+				break;
+
+			case 0x3b:
+				this.reg.sp = u16(this.reg.sp - 1);
+				break;
+
+
+			/*****************************
+			 * XCHG - Exchange Registers *
+			 *****************************/
+
+			case 0xeb: {
+				const regH = this.reg.h;
+				this.reg.h = this.reg.d;
+				this.reg.d = regH;
+
+				const regL = this.reg.l;
+				this.reg.l = this.reg.e;
+				this.reg.e = regL;
+				break;
+			}
+
+
+			/*************************
+			 * XTHL - Exchange Stack *
+			 *************************/
+
+			case 0xe3: {
+				const memSP = this.mem.getWord(this.reg.sp);
+				const regHL = this.reg.getHL();
+				this.reg.setHL(memSP);
+				this.mem.setWord(this.reg.sp, regHL);
+				break;
+			}
+
+
+			/*******************************
+			 * SPHL - Load SP from H and L *
+			 *******************************/
+
+			case 0xf9:
+				this.reg.sp = this.reg.getHL();
+				break;
+
+
+			/*****************************
+			 * LXI - Load Immediate Data *
+			 *****************************/
+
+			case 0x01:
+				this.reg.setBC(this.getNextWord());
+				break;
+
+			case 0x11:
+				this.reg.setDE(this.getNextWord());
+				break;
+
+			case 0x21:
+				this.reg.setHL(this.getNextWord());
+				break;
+
+			case 0x31:
+				this.reg.sp = this.getNextWord();
+				break;
+
+
+			/*****************************
+			 * MVI - Move Immediate Data *
+			 *****************************/
+
+			case 0x06:
+				this.reg.b = this.getNextByte();
+				break;
+
+			case 0x0e:
+				this.reg.c = this.getNextByte();
+				break;
+
+			case 0x16:
+				this.reg.d = this.getNextByte();
+				break;
+
+			case 0x1e:
+				this.reg.e = this.getNextByte();
+				break;
+
+			case 0x26:
+				this.reg.h = this.getNextByte();
+				break;
+
+			case 0x2e:
+				this.reg.l = this.getNextByte();
+				break;
+
+			case 0x36:
+				this.setM(this.getNextByte());
+				break;
+
+			case 0x3e:
+				this.reg.a = this.getNextByte();
+				break;
+
+
+			/**************************************
+			 * ADI - Add Immediate Data to Accumulator *
+			 **************************************/
+
+			case 0xc6:
+				this.add(this.getNextByte());
+				break;
+
+
+			/*************************************************
+			 * ACI - Add Immediate Data to Accumulator with Carry *
+			 *************************************************/
+
+			case 0xce:
+				this.adc(this.getNextByte());
+				break;
+
+
+			/*********************************************
+			 * SUI - Subtract Immediate Data from Accumulator *
+			 *********************************************/
+
+			case 0xd6:
+				this.sub(this.getNextByte());
+				break;
+
+
+			/*********************************************************
+			 * SBI - Subtract Immediate Data from Accumulator with Borrow *
+			 *********************************************************/
+
+			case 0xde:
+				this.sbb(this.getNextByte());
+				break;
+
+
+			/************************************************
+			 * ANI - Logical AND Immediate Data with Accumulator *
+			 ************************************************/
+
+			case 0xe6:
+				this.ana(this.getNextByte());
+				break;
+
+
+			/***************************************************************
+			 * XRI - Logical XOR (exclusive-or) Immediate Data with Accumulator *
+			 ***************************************************************/
+
+			case 0xee:
+				this.xra(this.getNextByte());
+				break;
+
+
+			/****************************************************
+			 * ORI - Logical OR Immediate Data with Accumulator *
+			 ****************************************************/
 
 			case 0xf6:
-				this.ori();
+				this.ora(this.getNextByte());
 				break;
 
-			case 0x37:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.stc();
-				break;
 
-			case 0x2f:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.cma();
-				break;
-
-			case 0x3f:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.cmc();
-				break;
-
-			case 0x22:
-				this.shld();
-				break;
-
-			case 0x2a:
-				this.lhld();
-				break;
-
-			case 0x3a:
-				this.lda();
-				break;
-
-			case 0x32:
-				this.sta();
-				break;
+			/*************************************************
+			 * CPI - Compare Immediate Data with Accumulator *
+			 *************************************************/
 
 			case 0xfe:
-				this.cpi();
-				break;
-
-			case 0xa8:
-			case 0xa9:
-			case 0xaa:
-			case 0xab:
-			case 0xac:
-			case 0xad:
-			case 0xae:
-			case 0xaf:
-				this.xra(opcode);
+				this.cmp(this.getNextByte());
 				break;
 
 
-			/*************
-			 * I/O GROUP *
-			 *************/
+			/************************************
+			 * STA - Store Accumulator Directly *
+			 ************************************/
+
+			case 0x32:
+				this.mem.set(this.getNextWord(), this.reg.a);
+				break;
+
+
+			/***********************************
+			 * LDA - Load Accumulator Directly *
+			 ***********************************/
+
+			case 0x3a:
+				this.reg.a = this.mem.get(this.getNextWord());
+				break;
+
+
+			/********************************
+			 * SHLD - Store Hand L Directly *
+			 ********************************/
+
+			case 0x22:
+				this.mem.setWord(this.getNextWord(), this.reg.getHL());
+				break;
+
+
+			/*******************************
+			 * LHLD - Load Hand L Directly *
+			 *******************************/
+
+			case 0x2a:
+				this.reg.setHL(this.mem.getWord(this.getNextWord()));
+				break;
+
+
+			/*******************************
+			 * PCHL - Load Program Counter *
+			 *******************************/
+
+			case 0xe9:
+				this.reg.pc = this.reg.getHL();
+				break;
+
+
+			/*********************
+			 * Jump Instructions *
+			 *********************/
+
+			case 0xc3:
+			case 0xda:
+			case 0xd2:
+			case 0xca:
+			case 0xc2:
+			case 0xfa:
+			case 0xf2:
+			case 0xea:
+			case 0xe2: {
+				const address = this.getNextWord();
+				if (this.checkBranchCondition(opcode)) {
+					this.reg.pc = address;
+				}
+				break;
+			}
+
+
+			/********************************
+			 * Call Subroutine Instructions *
+			 ********************************/
+
+			case 0xcd:
+			case 0xdc:
+			case 0xd4:
+			case 0xcc:
+			case 0xc4:
+			case 0xec:
+			case 0xe4:
+			case 0xfc:
+			case 0xf4: {
+				const address = this.getNextWord();
+				if (this.checkBranchCondition(opcode)) {
+					extraCycles = 6;
+					this.stackAdd(this.reg.pc);
+					this.reg.pc = address;
+				}
+				break;
+			}
+
+
+			/***************************************
+			 * Return from Subroutine Instructions *
+			 ***************************************/
+
+			case 0xc9:
+			case 0xd8:
+			case 0xd0:
+			case 0xc8:
+			case 0xc0:
+			case 0xf8:
+			case 0xf0:
+			case 0xe8:
+			case 0xe0:
+				if (this.checkBranchCondition(opcode)) {
+					extraCycles = 6;
+					this.reg.pc = this.stackPop();
+				}
+				break;
+
+
+			/****************************
+			 * RST - Reset Instructions *
+			 ****************************/
 
 			case 0xc7:
 			case 0xcf:
@@ -517,29 +1202,43 @@ export class Cpu {
 			case 0xef:
 			case 0xf7:
 			case 0xff:
-				throw new Cpu.UnimplementedInstructionError(opcode); // jumped = this.rst(opcode);
+				this.stackAdd(this.reg.pc);
+				this.reg.pc = u16(opcode & 0x38);
 				break;
 
-			case 0xc5:
-			case 0xd5:
-			case 0xe5:
-			case 0xf5:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.push(opcode);
-				break;
 
-			case 0xc1:
-			case 0xd1:
-			case 0xe1:
-			case 0xf1:
-				throw new Cpu.UnimplementedInstructionError(opcode); // this.pop(opcode);
-				break;
+			/************************************
+			 * Interrupt Flip-Flop Instructions *
+			 ************************************/
 
 			case 0xfb:
-				this.ei();
+				this.intEnabled = true;
 				break;
 
 			case 0xf3:
-				this.di();
+				this.intEnabled = false;
+				break;
+
+
+			/********************
+			 * I/O Instructions *
+			 ********************/
+
+			case 0xdb:
+				this.reg.a = this.device.input(this.getNextByte());
+				break;
+
+			case 0xd3:
+				this.device.output(this.getNextByte(), this.reg.a);
+				break;
+
+
+			/**************************
+			 * HLT - Halt Instruction *
+			 **************************/
+
+			case 0x76:
+				this.halted = true;
 				break;
 
 
@@ -547,726 +1246,365 @@ export class Cpu {
 				throw new Cpu.UnimplementedInstructionError(opcode);
 		}
 
-		if (!jumped) this.pc = u16(this.pc + getOpcodeLength(opcode));
-
-		return getOpcodeCpuCycles(opcode);
+		return Opcode.getCycles(opcode) + extraCycles;
 	}
 
-	protected getOffset(): u8 {
-		let offset = u16((this.h << 8) | this.l);
+	/**
+	 * Simulates a real CPU step with the Intel 8080's speed.
+	 */
+	public async step() {
+		if (this.stepCycles > Cpu.STEP_CYCLES) {
+			this.stepCycles -= Cpu.STEP_CYCLES;
 
-		return this.memory.read(offset);
-	}
+			const duration = Date.now() - this.stepZero;
+			const delay = Cpu.STEP_TIME - duration;
 
-	protected setOffset(value: u8) {
-		let offset = u16((this.h << 8) | this.l);
+			console.log(`CPU: sleep ${delay}ms`);
+			await new Promise(resolve => setTimeout(resolve, delay)); // Delay
 
-		this.memory.write(offset, value);
-	}
-
-	protected getData8(): u8 {
-		return this.memory.read(u16(this.pc + 1));
-	}
-
-	protected getData16(): u16 {
-		return u16((this.memory.read(u16(this.pc + 2)) << 8) | this.memory.read(u16(this.pc + 1)));
-	}
-
-	protected getRegisterByNum(registerNum: number): u8 {
-		switch (registerNum) {
-			case 0:
-				return this.b;
-
-			case 1:
-				return this.c;
-
-			case 2:
-				return this.d;
-
-			case 3:
-				return this.e;
-
-			case 4:
-				return this.h;
-
-			case 5:
-				return this.l;
-
-			case 6:
-				return this.getOffset();
-
-			case 7:
-				return this.a;
-
-			default:
-				throw new Cpu.UnreachableError();
+			this.stepZero = this.stepZero + Cpu.STEP_TIME;
 		}
+
+		const cycles = this.next();
+		this.stepCycles += cycles;
+
+		return cycles;
 	}
 
-	protected setRegisterByNum(registerNum: number, newValue: u8) {
-		switch (registerNum) {
-			case 0:
-				return this.b = newValue;
-
-			case 1:
-				return this.c = newValue;
-
-			case 2:
-				return this.d = newValue;
-
-			case 3:
-				return this.e = newValue;
-
-			case 4:
-				return this.h = newValue;
-
-			case 5:
-				return this.l = newValue;
-
-			case 6:
-				return this.setOffset(newValue);
-
-			case 7:
-				return this.a = newValue;
-
-			default:
-				throw new Cpu.UnreachableError();
+	public handleIntEnabled(address: u16) {
+		if (this.intEnabled) {
+			this.intEnabled = false;
+			this.stackAdd(this.reg.pc);
+			this.reg.pc = address;
+			this.stepCycles += Opcode.getCycles(0xcd as u8);
 		}
 	}
 
 
-	/***********************
-	 * DATA TRANSFER GROUP *
-	 ***********************/
+	/************************
+	 * IMMEDIATE ADDRESSING *
+	 ************************/
 
-	protected mov(opcode: u8) {
-		const src = opcode & 7;
-		const dest = (opcode >> 3) & 7;
+	/**
+	 * Returns the byte at the program counter and moves the program counter forwards by 1.
+	 */
+	public getNextByte(): u8 {
+		const value = this.mem.get(this.reg.pc);
+		this.reg.pc = u16(this.reg.pc + 1);
 
-		this.setRegisterByNum(dest, this.getRegisterByNum(src));
+		return value;
 	}
 
-	protected mvi(opcode: u8) {
-		const dest = opcode >> 3;
+	/**
+	 * Returns the word at the program counter and moves the program counter forwards by 2.
+	 */
+	public getNextWord(): u16 {
+		const value = this.mem.getWord(this.reg.pc);
+		this.reg.pc = u16(this.reg.pc + 2);
 
-		this.setRegisterByNum(dest, this.getData8());
+		return value;
 	}
 
-	protected lxi(opcode: u8) {
-		switch (opcode) {
-			case 0x01:
-				this.b = u8(this.getData16() >> 8);
-				this.c = this.getData8();
-				return;
 
-			case 0x11:
-				this.d = u8(this.getData16() >> 8);
-				this.e = this.getData8();
-				return;
+	/*******************
+	 * MEMORY REGISTER *
+	 *******************/
 
-			case 0x21:
-				this.h = u8(this.getData16() >> 8);
-				this.l = this.getData8();
-				return;
+	/**
+	 * Get value of register M, which is just the memory.
+	 */
+	public getM(): u8 {
+		const address = this.reg.getHL();
 
-			case 0x31:
-				this.sp = this.getData16();
-				return;
-
-			default:
-				throw new Cpu.UnreachableError();
-		}
+		return this.mem.get(address);
 	}
 
-	protected ldax(opcode: u8) {
-		switch (opcode) {
-			case 0x0a: {
-				const offset = u16((this.b << 8) | this.c);
-				this.a = this.memory.read(offset);
-				return;
-			}
+	/**
+	 * Set value of register M, which is just the memory.
+	 * @param value - The new value.
+	 */
+	public setM(value: u8) {
+		const address = this.reg.getHL();
 
-			case 0x1a: {
-				const offset = u16((this.d << 8) | this.e);
-				this.a = this.memory.read(offset);
-				return;
-			}
-
-			default:
-				throw new Cpu.UnreachableError();
-		}
-	}
-
-	protected stax(opcode: u8) {
-		const stax = (x: u8, y: u8) => {
-			const address = u16((x << 8) | y);
-			this.memory.write(address, this.a);
-		};
-
-		switch (opcode) {
-			case 0x02:
-				stax(this.b, this.c);
-				return;
-
-			case 0x12:
-				stax(this.d, this.e);
-				return;
-
-			default:
-				throw new Cpu.UnreachableError();
-		}
-	}
-
-	protected xri() {
-		const rhs = this.getData8();
-		const lhs = this.a;
-
-		this.a = u8(lhs ^ rhs);
-		this.conditions.setAll(u16(this.a), this.a);
-	}
-
-	protected xchg() {
-		const l = this.l;
-		this.l = this.e;
-		this.e = l;
-
-		const h = this.h;
-		this.h = this.d;
-		this.d = h;
+		this.mem.set(address, value);
 	}
 
 
 	/********************
-	 * ARITHMETIC GROUP *
+	 * STACK OPERATIONS *
 	 ********************/
 
-	protected add(opcode: u8) {
-		const reg = opcode & 0x07;
-
-		const lhs = this.a;
-		const rhs = this.getRegisterByNum(reg);
-		const answer = u16(lhs + rhs);
-
-		this.a = u8(answer);
-		this.conditions.setAll(answer, u8((lhs & 0xf) + (rhs & 0xf)));
+	/**
+	 * Add a value to the top of the stack.
+	 * @param value - The value to add.
+	 */
+	public stackAdd(value: u16) {
+		this.reg.sp = u16(this.reg.sp - 2);
+		this.mem.setWord(this.reg.sp, value);
 	}
 
-	protected adc(opcode: u8) {
-		const reg = opcode & 0x07;
+	/**
+	 * Pop a value from the top of the stack.
+	 * @return - The value from the stack.
+	 */
+	public stackPop(): u16 {
+		const value = this.mem.getWord(this.reg.sp);
+		this.reg.sp = u16(this.reg.sp + 2);
 
-		const lhs = this.a;
-		const rhs = u16(this.getRegisterByNum(reg) + +this.conditions.cy);
-		const answer = u16(lhs + rhs);
-
-		this.a = u8(answer);
-		this.conditions.setAll(answer, u8((lhs & 0xf) + (rhs & 0xf)));
+		return value;
 	}
 
-	protected adi() {
-		const lhs = this.a;
-		const rhs = this.getData8();
-		const answer = u16(lhs + rhs);
 
-		this.conditions.setAll(answer, u8((lhs & 0xf) + (rhs & 0xf)));
-		this.a = u8(answer);
-	}
+	/*****************************
+	 * BRANCH CONDITION CHECKING *
+	 *****************************/
 
-	protected aci() {
-		const lhs = this.a;
-		const rhs = u8(this.getData8() + +this.conditions.cy);
-		const answer = u16(lhs + rhs);
-
-		this.conditions.setAll(answer, u8((lhs & 0xf) + (rhs & 0xf)));
-		this.a = u8(answer);
-	}
-
-	protected cmp(opcode: u8) {
-		const reg = opcode & 0x07;
-
-		const lhs = this.a;
-		const rhs = this.getRegisterByNum(reg);
-		const answer = u16(lhs - rhs);
-
-		this.conditions.setAll(answer, u8((lhs & 0xf) - (rhs & 0xf)));
-	}
-
-	protected sub(opcode: u8) {
-		const reg = opcode & 0x07;
-
-		const lhs = this.a;
-		const rhs = this.getRegisterByNum(reg);
-		const answer = u16(lhs - rhs);
-
-		this.a = u8(answer);
-		this.conditions.setAll(answer, u8((lhs & 0xf) - (rhs & 0xf)));
-	}
-
-	protected sbb(opcode: u8) {
-		const reg = opcode & 0x07;
-
-		const lhs = this.a;
-		const rhs = u16(this.getRegisterByNum(reg) + +this.conditions.cy);
-		const answer = u16(lhs - rhs);
-
-		this.a = u8(answer);
-		this.conditions.setAll(answer, u8((lhs & 0xf) - (rhs & 0xf)));
-	}
-
-	protected sui() {
-		const lhs = this.a;
-		const rhs = this.getData8();
-		const answer = u16(lhs - rhs);
-
-		this.conditions.setAll(answer, u8((lhs & 0xf) - (rhs & 0xf)));
-		this.a = u8(answer);
-	}
-
-	protected sbi() {
-		const lhs = this.a;
-		const rhs = u8(this.getData8() + +this.conditions.cy);
-		const answer = u16(lhs - rhs);
-
-		this.conditions.setAll(answer, u8((lhs & 0xf) - (rhs & 0xf)));
-		this.a = u8(answer);
-	}
-
-	protected inr(opcode: u8) {
-		const reg = opcode >> 3;
-		const answer = u8(this.getRegisterByNum(reg) + 1);
-
-		if (opcode === 0x34) {
-			this.conditions.setAllExceptCarry(u16(answer), u8((answer & 0xf) + 1));
-			this.setOffset(answer);
-		} else {
-			this.setRegisterByNum(reg, answer);
-			this.conditions.setAllExceptCarry(u16(answer), answer);
-		}
-	}
-
-	protected dcr(opcode: u8) {
-		const reg = opcode >> 3;
-		const answer = u8(this.getRegisterByNum(reg) - 1);
-
-		if (opcode === 0x35) {
-			this.conditions.setAllExceptCarry(u16(answer), answer);
-			this.setOffset(answer);
-		} else {
-			this.setRegisterByNum(reg, answer);
-			this.conditions.setAllExceptCarry(u16(answer), answer);
-		}
-	}
-
-	protected inx(opcode: u8) {
+	/**
+	 * Checks branching condition for Jump/Call/Return operations
+	 * @param opcode - The opcode of the operation.
+	 */
+	public checkBranchCondition(opcode: u8): boolean {
 		switch (opcode) {
-			case 0x03: {
-				const bc = u16((this.b << 8) | this.c);
-				const answer = u16(bc + 1);
+			case 0xc3: // JMP - Jump
+			case 0xcd: // CALL - Call
+			case 0xc9: // RET - Return
+				return true;
 
-				this.b = u8(answer >> 8);
-				this.c = u8(answer);
-				return;
-			}
+			case 0xda: // JC - Jump if Carry
+			case 0xdc: // CC - Call if Carry
+			case 0xd8: // RC - Return if Carry
+				return this.reg.getFlagC();
 
-			case 0x13: {
-				const de = u16((this.d << 8) | this.e);
-				const answer = u16(de + 1);
+			case 0xd2: // JNC - Jump if No Carry
+			case 0xd4: // CNC - Call if No Carry
+			case 0xd0: // RNC - Return if No Carry
+				return !this.reg.getFlagC();
 
-				this.d = u8(answer >> 8);
-				this.e = u8(answer);
-				return;
-			}
+			case 0xca: // JZ - Jump if Zero
+			case 0xcc: // CZ - Call if Zero
+			case 0xc8: // RZ - Return if Zero
+				return this.reg.getFlagZ();
 
-			case 0x23: {
-				const hl = u16((this.h << 8) | this.l);
-				const answer = u16(hl + 1);
+			case 0xc2: // JNZ - Jump if Not Zero
+			case 0xc4: // CNZ - Call if Not Zero
+			case 0xc0: // RNZ - Return if Not Zero
+				return !this.reg.getFlagZ();
 
-				this.h = u8(answer >> 8);
-				this.l = u8(answer);
-				return;
-			}
+			case 0xfa: // JM - Jump if Minus
+			case 0xfc: // CM - Call if Minus
+			case 0xf8: // RM - Return if Minus
+				return this.reg.getFlagS();
 
-			case 0x33:
-				this.sp = u16(this.sp + 1);
-				return;
+			case 0xf2: // JP - Jump if Plus
+			case 0xf4: // CP - Call if Plus
+			case 0xf0: // RP - Return if Plus
+				return !this.reg.getFlagS();
+
+			case 0xea: // JPE - Jump if Parity Even
+			case 0xec: // CPE - Call if Parity Even
+			case 0xe8: // RPE - Return if Parity Even
+				return this.reg.getFlagP();
+
+			case 0xe2: // JPO - Jump if Parity Odd
+			case 0xe4: // CPO - Call if Parity Odd
+			case 0xe0: // RPO - Return if Parity Odd
+				return !this.reg.getFlagP();
 
 			default:
-				throw new Cpu.UnreachableError();
+				throw new Cpu.UnimplementedInstructionError(opcode);
 		}
 	}
 
-	protected dcx(opcode: u8) {
-		switch (opcode) {
-			case 0x0b: {
-				const bc = u16((this.b << 8) | this.c);
-				const answer = u16(bc - 1);
 
-				this.b = u8(answer >> 8);
-				this.c = u8(answer);
-				return;
-			}
+	/******************
+	 * ALU OPERATIONS *
+	 ******************/
 
-			case 0x1b: {
-				const de = u16((this.d << 8) | this.e);
-				const answer = u16(de - 1);
+	/** */
+	public inr(num: u8): u8 {
+		const result = u8(num + 1);
 
-				this.d = u8(answer >> 8);
-				this.e = u8(answer);
-				return;
-			}
+		this.reg.setFlagS(result);
+		this.reg.setFlagZ(result);
+		this.reg.setFlagP(result);
+		this.reg.setFlagA((num & 0x0f) + 0x01 > 0x0f);
 
-			case 0x2b: {
-				const hl = u16((this.h << 8) | this.l);
-				const answer = u16(hl - 1);
-
-				this.h = u8(answer >> 8);
-				this.l = u8(answer);
-				return;
-			}
-
-			case 0x3b:
-				this.sp = u16(this.sp - 1);
-				return;
-
-			default:
-				throw new Cpu.UnreachableError();
-		}
+		return result;
 	}
 
-	protected dad(opcode: u8) {
-		const dad = (x: u8, y: u8) => {
-			const hl = u16((this.h << 8) | this.l);
-			const xy = u16((x << 8) | y);
+	public dcr(num: u8): u8 {
+		const result = u8(num - 1);
 
-			const answer = u16(hl + xy);
+		this.reg.setFlagS(result);
+		this.reg.setFlagZ(result);
+		this.reg.setFlagP(result);
+		this.reg.setFlagA((result & 0x0f) != 0x0f);
 
-			this.conditions.setCY(answer);
-			this.h = u8(answer >> 8);
-			this.l = u8(answer);
-		};
-
-		switch (opcode) {
-			case 0x09:
-				dad(this.b, this.c);
-				return;
-
-			case 0x19:
-				dad(this.d, this.e);
-				return;
-
-			case 0x29:
-				dad(this.h, this.l);
-				return;
-
-			case 0x39:
-				const hl = (this.h << 8) | this.l;
-
-				const answer = u16(hl + this.sp);
-
-				this.conditions.setCY(answer);
-				this.h = u8(answer >> 8);
-				this.l = u8(answer);
-				return;
-
-			default:
-				throw new Cpu.UnreachableError();
-		}
+		return result;
 	}
 
-	protected daa() {
-		let l = this.a;
-		let least = this.a & 0xf;
+	public daa() {
+		let accumulator = 0 as u8;
+		let flagC = this.reg.getFlagC();
 
-		if (this.conditions.ac || least > 9) {
-			l = u8(l + 6);
+		const lsb = this.reg.a & 0xf;
+		const msb = (this.reg.a >> 4) & 0xf;
 
-			if ((l & 0xf) < least) {
-				this.conditions.ac = true;
-			}
+		// If the least significant four bits of the accumulator represents a number greater than 9, or if the auxiliary carry flag is active, ...
+		if ((lsb > 9) || this.reg.getFlagA()) {
+			// ... the least significant four bits of the accumulator are incremented by six.
+			accumulator = u8(accumulator + 0x06);
 		}
 
-		least = l & 0xf;
-		let most = (l >> 4) & 0xf;
-
-		if (this.conditions.cy || most > 9) {
-			most += 6;
+		// If the most significant four bits of the accumulator now represent a number greater than 9, or if the carry flag is active, ...
+		if ((msb > 9) || this.reg.getFlagC() || (msb >= 9 && lsb > 9)) {
+			// ... the most significant four bits of the accumulator are incremented by six.
+			accumulator = u8(accumulator + 0x60);
+			flagC = true;
 		}
 
-		const answer = u16((most << 4) | least);
-
-		this.conditions.setAllExceptAC(answer);
-		this.a = u8(answer);
+		this.add(accumulator);
+		this.reg.setFlagC(flagC);
 	}
 
+	public add(num: u8) {
+		const regA = this.reg.a;
+		const result = u8(regA + num);
 
-	/****************
-	 * BRANCH GROUP *
-	 ****************/
+		this.reg.setFlagS(result);
+		this.reg.setFlagZ(result);
+		this.reg.setFlagP(result);
+		this.reg.setFlagA((regA & 0x0f) + (num & 0x0f) > 0x0f);
+		this.reg.setFlagC(regA + num > 0xff);
 
-	protected jmp() {
-		this.pc = this.getData16();
-		return true;
+		this.reg.a = result;
 	}
 
-	protected jnc() {
-		if (!this.conditions.cy) return this.jmp();
-		return false;
+	public adc(num: u8) {
+		const flagC = +this.reg.getFlagC();
+		const regA = this.reg.a;
+		const result = u8(regA + num + flagC);
+
+		this.reg.setFlagS(result);
+		this.reg.setFlagZ(result);
+		this.reg.setFlagP(result);
+		this.reg.setFlagA((regA & 0x0f) + (num & 0x0f) + flagC > 0x0f);
+		this.reg.setFlagC(regA + num + flagC > 0xff);
+
+		this.reg.a = result;
 	}
 
-	protected jc() {
-		if (this.conditions.cy) return this.jmp();
-		return false;
+	public sub(num: u8) {
+		const regA = this.reg.a;
+		const result = u8(regA - num);
+
+		this.reg.setFlagS(result);
+		this.reg.setFlagZ(result);
+		this.reg.setFlagP(result);
+		this.reg.setFlagA((regA & 0x0f) - (num & 0x0f) >= 0x00);
+		this.reg.setFlagC(regA < num);
+
+		this.reg.a = result;
 	}
 
-	protected jp() {
-		if (!this.conditions.s) return this.jmp();
-		return false;
+	public sbb(num: u8) {
+		const flagC = +this.reg.getFlagC();
+		const regA = this.reg.a;
+		const result = u8(regA - num - flagC);
+
+		this.reg.setFlagS(result);
+		this.reg.setFlagZ(result);
+		this.reg.setFlagP(result);
+		this.reg.setFlagA((regA & 0x0f) - (num & 0x0f) - flagC >= 0x00);
+		this.reg.setFlagC(regA < num + flagC);
+
+		this.reg.a = result;
 	}
 
-	protected jpo() {
-		if (!this.conditions.p) return this.jmp();
-		return false;
+	public ana(num: u8) {
+		const result = u8(this.reg.a & num);
+
+		this.reg.setFlagS(result);
+		this.reg.setFlagZ(result);
+		this.reg.setFlagP(result);
+		this.reg.setFlagA(((this.reg.a | num) & 0x08) != 0);
+		this.reg.setFlagC(false);
+
+		this.reg.a = result;
 	}
 
-	protected jpe() {
-		if (this.conditions.p) return this.jmp();
-		return false;
+	public xra(num: u8) {
+		const result = u8(this.reg.a ^ num);
+
+		this.reg.setFlagS(result);
+		this.reg.setFlagZ(result);
+		this.reg.setFlagP(result);
+		this.reg.setFlagA(false);
+		this.reg.setFlagC(false);
+
+		this.reg.a = result;
 	}
 
-	protected jz() {
-		if (this.conditions.z) return this.jmp();
-		return false;
+	public ora(num: u8) {
+		const result = u8(this.reg.a | num);
+
+		this.reg.setFlagS(result);
+		this.reg.setFlagZ(result);
+		this.reg.setFlagP(result);
+		this.reg.setFlagA(false);
+		this.reg.setFlagC(false);
+
+		this.reg.a = result;
 	}
 
-	protected jnz() {
-		if (!this.conditions.z) return this.jmp();
-		return false;
+	public cmp(num: u8) {
+		const regA = this.reg.a;
+
+		this.sub(num);
+
+		this.reg.a = regA;
 	}
 
-	protected jm() {
-		if (this.conditions.s) return this.jmp();
-		return false;
+	public rlc() {
+		const flagC = Bit.get(this.reg.a, 7);
+		const result = u8((this.reg.a << 1) | +flagC);
+
+		this.reg.setFlagC(flagC);
+		this.reg.a = result;
 	}
 
-	protected call() {
-		const ret = u16(this.pc + 3);
+	public rrc() {
+		const flagC = Bit.get(this.reg.a, 0);
+		const result = flagC ? u8(0x80 | (this.reg.a >> 1)) : u8(this.reg.a >> 1);
 
-		this.memory.write(u16(this.sp - 1), u8(ret >> 8));
-		this.memory.write(u16(this.sp - 2), u8(ret));
-		this.sp = u16(this.sp - 2);
-		this.jmp();
-
-		return true;
+		this.reg.setFlagC(flagC);
+		this.reg.a = result;
 	}
 
-	protected cz() {
-		if (this.conditions.z) return this.call();
-		return false;
+	public ral() {
+		const flagC = Bit.get(this.reg.a, 7);
+		const result = u8((this.reg.a << 1) | +this.reg.getFlagC());
+
+		this.reg.setFlagC(flagC);
+		this.reg.a = result;
 	}
 
-	protected cnz() {
-		if (!this.conditions.z) return this.call();
-		return false;
+	public rar() {
+		const flagC = Bit.get(this.reg.a, 0);
+		const result = this.reg.getFlagC() ? u8(0x80 | (this.reg.a >> 1)) : u8(this.reg.a >> 1);
+
+		this.reg.setFlagC(flagC);
+		this.reg.a = result;
 	}
 
-	protected cc() {
-		if (this.conditions.cy) return this.call();
-		return false;
+	public dad(num: u16) {
+		const regHL = this.reg.getHL();
+		const result = u16(regHL + num);
+
+		this.reg.setFlagC(regHL > 0xffff - num);
+		this.reg.setHL(result);
 	}
 
-	protected cnc() {
-		if (!this.conditions.cy) return this.call();
-		return false;
-	}
-
-	protected cpe() {
-		if (this.conditions.p) return this.call();
-		return false;
-	}
-
-	protected cpo() {
-		if (!this.conditions.p) return this.call();
-		return false;
-	}
-
-	protected cm() {
-		if (this.conditions.s) return this.call();
-		return false;
-	}
-
-	protected cp() {
-		if (!this.conditions.s) return this.call();
-		return false;
-	}
-
-	protected ret() {
-		const low = this.memory.read(this.sp);
-		const high = this.memory.read(u16(this.sp + 1));
-
-		this.pc = u16((high << 8) | low);
-		this.sp = u16(this.sp + 2);
-
-		return true;
-	}
-
-	protected rc() {
-		if (this.conditions.cy) return this.ret();
-		return false;
-	}
-
-	protected rnc() {
-		if (!this.conditions.cy) return this.ret();
-		return false;
-	}
-
-	protected rz() {
-		if (this.conditions.z) return this.ret();
-		return false;
-	}
-
-	protected rnz() {
-		if (!this.conditions.z) return this.ret();
-		return false;
-	}
-
-	protected rm() {
-		if (this.conditions.s) return this.ret();
-		return false;
-	}
-
-	protected rp() {
-		if (!this.conditions.s) return this.ret();
-		return false;
-	}
-
-	protected rpe() {
-		if (this.conditions.p) return this.ret();
-		return false;
-	}
-
-	protected rpo() {
-		if (!this.conditions.p) return this.ret();
-		return false;
-	}
-
-
-	/*****************
-	 * LOGICAL GROUP *
-	 *****************/
-
-	protected ani() {
-		const answer = u16(this.a & this.getData8());
-
-		this.conditions.setAllExceptAC(answer);
-		this.a = u8(answer);
-	}
-
-	protected ana(opcode: u8) {
-		const reg = opcode & 0x07;
-
-		const lhs = this.a;
-		const rhs = this.getRegisterByNum(reg);
-		const answer = u8(lhs & rhs);
-
-		this.a = answer;
-		this.conditions.setAll(u16(answer), answer);
-	}
-
-	protected rlc() {
-		this.a = rotateBitsLeftU8(this.a, 1);
-		this.conditions.cy = (this.a & 1) != 0;
-	}
-
-	protected ral() {
-		const newCarry = (this.a & 0x80) != 0;
-
-		this.a = u8((this.a << 1) | +this.conditions.cy);
-		this.conditions.cy = newCarry;
-	}
-
-	protected rar() {
-		const newCarry = (this.a & 1) != 0;
-
-		this.a = u8((this.a >> 1) | (+this.conditions.cy << 7));
-		this.conditions.cy = newCarry;
-	}
-
-	protected rrc() {
-		this.a = rotateBitsRightU8(this.a, 1);
-		this.conditions.cy = (this.a & 0x80) != 0;
-	}
-
-	protected ora(opcode: u8) {
-		const reg = opcode & 0x07;
-		const answer = u16(this.a | this.getRegisterByNum(reg));
-
-		this.conditions.setAll(answer, u8(0));
-		this.a = u8(answer);
-	}
-
-	protected ori() {
-		const answer = u16(this.a | this.getData8());
-
-		this.conditions.setAllExceptAC(answer);
-		this.a = u8(answer);
-	}
-
-	protected shld() {
-		const address = this.getData16();
-
-		this.memory.write(address, this.l);
-		this.memory.write(u16(address + 1), this.h);
-	}
-
-	protected lhld() {
-		const address = this.getData16();
-
-		this.l = this.memory.read(address);
-		this.h = this.memory.read(u16(address + 1));
-	}
-
-	protected lda() {
-		const address = this.getData16();
-
-		this.a = this.memory.read(address);
-	}
-
-	protected sta() {
-		const address = this.getData16();
-
-		this.memory.write(address, this.a);
-	}
-
-	protected cpi() {
-		const data = this.getData8();
-		const answer = u16(this.a - data);
-
-		this.conditions.setAllExceptCarry(answer, u8((this.a & 0xf) - (data & 0xf)));
-		this.conditions.cy = this.a < data;
-	}
-
-	protected xra(opcode: u8) {
-		const reg = opcode & 0x07;
-
-		const lhs = this.a;
-		const rhs = this.getRegisterByNum(reg);
-		const answer = u16(lhs ^ rhs);
-
-		this.a = u8(answer);
-		this.conditions.setAll(answer, u8((lhs & 0xf) ^ (rhs & 0xf)));
-	}
-
-
-	/*************
-	 * I/O GROUP *
-	 *************/
-
-	protected ei() {
-		this.intEnable = true;
-	}
-
-	protected di() {
-		this.intEnable = false;
-	}
 }
 
 export namespace Cpu {
@@ -1275,7 +1613,7 @@ export namespace Cpu {
 		public opcode: u8;
 
 		constructor(opcode: u8) {
-			super(`Unimplemented instruction: ${getOpcodeName(opcode)} (0x${toHexStr(opcode)})`);
+			super(`Unimplemented instruction: ${Opcode.toString(opcode)} (0x${Debug.toHexStr(opcode)})`);
 			this.opcode = opcode;
 		}
 	}

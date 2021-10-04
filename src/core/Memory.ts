@@ -1,54 +1,70 @@
 import { u16, u8 } from 'typed-numbers';
 
+/**
+ * Represents the memory of the CPU.
+ */
 export class Memory {
 
-	/**
-	 * Memory size.
-	 */
-	private static readonly MEMORY_SIZE: number = 0x10000; // 16K
+	/** Memory size. */
+	public static readonly MEMORY_SIZE: number = 0x10000; // 16K
+
+
+	/** Memory data. */
+	public data = new ArrayBuffer(Memory.MEMORY_SIZE);
+
+	/** Memory data view. */
+	protected view = new DataView(this.data);
+
 
 	/**
-	 * The memory.
-	 * @protected
+	 * Load a whole buffer into memory, starting at `offset`.
+	 * @param buffer - The buffer to load into memory. Can be of any array-like type.
+	 * @param offset - The offset from where to start writing the buffer into memory.
 	 */
-	protected memory: Uint8Array;
-
-	/**
-	 * Memory constructor.
-	 */
-	constructor() {
-		this.memory = new Uint8Array(Memory.MEMORY_SIZE);
-	}
-
-	/**
-	 * Write a whole array or buffer into memory.
-	 * @param buffer - Array-like buffer, like Uint8Array or Buffer.
-	 * @param offset - Offset where to begin writing.
-	 */
-	public load(buffer: ArrayLike<number>, offset: number = 0) {
+	public load(buffer: ArrayLike<number>, offset: number) {
 		for (let address = 0; address < buffer.length; address++) {
-			if (offset + address >= this.memory.length) throw new Memory.NotEnoughMemoryError();
+			if (offset + address >= Memory.MEMORY_SIZE) throw new Memory.NotEnoughMemoryError();
 
-			this.memory[offset + address] = u8(buffer[address]);
+			this.set(u16(offset + address), u8(buffer[address]));
 		}
 	}
 
+
 	/**
-	 * Read a byte from memory.
-	 * @param address - Uint16 address
-	 * @return Uint8 value
+	 * Read memory at `address`.
+	 * @param address - The address.
+	 * @return - The value as an unsigned 8-bit integer.
 	 */
-	public read(address: u16): u8 {
-		return u8(this.memory[address]);
+	public get(address: u16): u8 {
+		return this.view.getUint8(address) as u8;
 	}
 
 	/**
-	 * Write a byte to memory.
-	 * @param address - Uint16 address
-	 * @param value - Uint8 value
+	 * Write `value` to memory at `address`.
+	 * @param address - The address.
+	 * @param value - The unsigned 8-bit integer to write into memory.
 	 */
-	public write(address: u16, value: u8) {
-		this.memory[address] = u8(value);
+	public set(address: u16, value: u8) {
+		this.view.setUint8(address, value);
+	}
+
+
+	/**
+	 * Read memory at `address` and `address + 1`.
+	 * @param address - The address.
+	 * @return - The value as an unsigned 16-bit integer.
+	 */
+	public getWord(address: u16): u16 {
+		return this.view.getUint16(address, true) as u16;
+	}
+
+	/**
+	 * Write `value` to memory at `address`.
+	 * @param address - The address.
+	 * @param value - The unsigned 16-bit integer to write into memory.
+	 */
+	public setWord(address: u16, value: u16) {
+		this.view.setUint16(address, value, true);
 	}
 
 }
