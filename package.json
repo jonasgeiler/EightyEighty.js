@@ -17,9 +17,10 @@
 		"src"
 	],
 	"scripts": {
-		"build": "microbundle build",
-		"test": "microbundle build && node test/run-all.js",
-		"dev": "microbundle watch --no-compress"
+		"build": "microbundle",
+		"test": "microbundle && node test/run-all.js",
+		"dev": "microbundle watch --no-compress",
+		"prepare": "microbundle"
 	},
 	"engines": {
 		"node": ">=14.0.0"
