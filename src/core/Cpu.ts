@@ -29,7 +29,7 @@ export class Cpu {
 	public halted = false;
 
 	/** Whether Flip-Flop instructions are interrupted. */
-	public intEnabled = false;
+	public interruptEnabled = false;
 
 	/** Whether debugging is enabled. */
 	public debugEnabled = false;
@@ -1212,11 +1212,11 @@ export class Cpu {
 			 ************************************/
 
 			case 0xfb:
-				this.intEnabled = true;
+				this.interruptEnabled = true;
 				break;
 
 			case 0xf3:
-				this.intEnabled = false;
+				this.interruptEnabled = false;
 				break;
 
 
@@ -1270,9 +1270,9 @@ export class Cpu {
 		return cycles;
 	}
 
-	public handleIntEnabled(address: u16) {
-		if (this.intEnabled) {
-			this.intEnabled = false;
+	public handleInterrupt(address: u16) {
+		if (this.interruptEnabled) {
+			this.interruptEnabled = false;
 			this.stackAdd(this.reg.pc);
 			this.reg.pc = address;
 			this.stepCycles += Opcode.getCycles(0xcd as u8);
