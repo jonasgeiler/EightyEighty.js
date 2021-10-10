@@ -1,7 +1,7 @@
 {
 	"name": "eighty-eighty-js",
 	"description": "A nice little Intel 8080 emulator for Node.js and Browser!",
-	"version": "1.0.7",
+	"version": "1.0.8",
 	"author": "Skayo (https://skayo.dev)",
 	"license": "MIT",
 	"repository": "Skayo/EightyEighty.js",
